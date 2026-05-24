@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import morgan from "morgan";
 import authRoutes from "./routes/authRoutes.js";
 import testRoutes from "./routes/testRoutes.js";
 import laundryRoutes from "./routes/laundryRoutes.js";
@@ -20,8 +23,18 @@ dotenv.config();
 
 const app = express();
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    message: "Too many requests, please try again later.",
+  },
+});
+
 // Global middlewares
 app.use(cors());
+app.use(helmet());
+app.use(morgan("dev"));
 app.use(express.json());
 
 // Health check route
@@ -32,6 +45,7 @@ app.get("/", (req, res) => {
 });
 
 // API routes
+app.use("/api", apiLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/laundries", laundryRoutes);
