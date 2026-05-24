@@ -12,6 +12,8 @@ import adminRoutes from "./routes/adminRoutes.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -40,6 +42,7 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Error handling middlewares must be after all routes
 app.use(notFound);
