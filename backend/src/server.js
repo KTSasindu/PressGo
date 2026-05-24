@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
@@ -64,6 +65,14 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5050;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const currentFilePath = fileURLToPath(import.meta.url);
+const isDirectRun = process.argv[1] === currentFilePath;
+const isTestEnv = process.env.NODE_ENV === "test";
+
+if (isDirectRun && !isTestEnv) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;
