@@ -1,0 +1,33 @@
+name: PressGo Backend CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend-tests:
+    name: Backend Test Suite
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      # Checkout the repository so the workflow can access the backend code.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install the requested Node.js runtime for the backend project.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Install backend dependencies from backend/package.json.
+      - name: Install dependencies
+        run: npm install
+
+      # Run the existing Jest + Supertest test suite.
+      - name: Run backend tests
+        run: npm test

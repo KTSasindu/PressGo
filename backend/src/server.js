@@ -70,7 +70,7 @@ const isDirectRun = process.argv[1] === currentFilePath;
 const isTestEnv = process.env.NODE_ENV === "test";
 
 if (isDirectRun && !isTestEnv) {
-  app.listen(PORT, () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
   });
 }

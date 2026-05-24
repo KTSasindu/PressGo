@@ -1,4 +1,4 @@
-import swaggerJsdoc from "swagger-jsdoc";
+import swaggerJSDoc from "swagger-jsdoc";
 
 const options = {
   definition: {
@@ -6,12 +6,12 @@ const options = {
     info: {
       title: "PressGo API",
       version: "1.0.0",
-      description:
-        "Aggregator-based laundry management and delivery platform API",
+      description: "API documentation for the PressGo laundry aggregation backend.",
     },
     servers: [
       {
         url: "http://localhost:5050",
+        description: "Local development server",
       },
     ],
     components: {
@@ -23,16 +23,10 @@ const options = {
         },
       },
     },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
   },
-
   apis: ["./src/routes/*.js"],
 };
 
-const swaggerSpec = swaggerJsdoc(options);
+const swaggerSpec = swaggerJSDoc(options);
 
 export default swaggerSpec;
