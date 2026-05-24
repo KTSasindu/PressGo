@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  LAUNDRY_OWNER
+  ADMIN
+  DRIVER
+}
+
+enum ShopStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ServiceUnit {
+  KG
+  ITEM
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED_BY_LAUNDRY
+  PICKED_UP
+  WASHING
+  READY_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laundryShops LaundryShop[]
+  orders       Order[]
+  deliveryAssignments DeliveryAssignment[]
+  notifications Notification[]
+}
+
+model LaundryShop {
+  id        Int        @id @default(autoincrement())
+  ownerId   Int
+  name      String
+  address   String
+  phone     String
+  openTime  String?
+  closeTime String?
+  status    ShopStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  owner    User      @relation(fields: [ownerId], references: [id])
+  services Service[]
+  orders   Order[]
+}
+
+model Service {
+  id            Int         @id @default(autoincrement())
+  laundryShopId Int
+  name          String
+  description   String?
+  price         Decimal
+  unitType      ServiceUnit
+  estimatedTime String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  laundryShop LaundryShop @relation(fields: [laundryShopId], references: [id])
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id            Int           @id @default(autoincrement())
+  customerId    Int
+  laundryShopId Int
+  pickupAddress String
+  pickupDate    DateTime
+  totalAmount   Decimal       @default(0)
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  customer    User        @relation(fields: [customerId], references: [id])
+  laundryShop LaundryShop @relation(fields: [laundryShopId], references: [id])
+  items       OrderItem[]
+  payment     Payment?
+  review      Review?
+  statusHistory OrderStatusHistory[]
+  commission Commission[]
+  deliveryAssignment DeliveryAssignment?
+
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  serviceId Int
+  quantity  Decimal
+  price     Decimal
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  orderId   Int           @unique
+  method    String
+  amount    Decimal
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  orderId   Int      @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model OrderStatusHistory {
+  id        Int         @id @default(autoincrement())
+  orderId   Int
+  status    OrderStatus
+  note      String?
+  changedBy Int?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Commission {
+  id                Int      @id @default(autoincrement())
+  orderId           Int      @unique
+  platformRate      Decimal  @default(10)
+  platformAmount    Decimal
+  laundryShopAmount Decimal
+  createdAt         DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model DeliveryAssignment {
+  id              Int      @id @default(autoincrement())
+  orderId         Int      @unique
+  driverId        Int
+  pickupNote      String?
+  deliveryNote    String?
+  assignedAt      DateTime @default(now())
+  pickedUpAt      DateTime?
+  deliveredAt     DateTime?
+
+  order  Order @relation(fields: [orderId], references: [id])
+  driver User  @relation(fields: [driverId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}

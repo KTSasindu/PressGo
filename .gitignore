@@ -1,0 +1,32 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Prisma generated files
+.prisma/
+
+# Logs
+logs
+*.log
+
+# macOS
+.DS_Store
+
+# Build folders
+dist/
+build/
+
+# VS Code
+.vscode/
+
+# Coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# OS files
+Thumbs.db
