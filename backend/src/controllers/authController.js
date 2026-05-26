@@ -2,9 +2,14 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
 
+const sanitizeUser = (user) => {
+  const { password, ...safeUser } = user;
+  return safeUser;
+};
+
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, phone, password, role } = req.body;
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -22,6 +27,7 @@ export const registerUser = async (req, res) => {
       data: {
         name,
         email,
+        phone,
         password: hashedPassword,
         role,
       },
@@ -29,7 +35,7 @@ export const registerUser = async (req, res) => {
 
     res.status(201).json({
       message: "User registered successfully",
-      user,
+      user: sanitizeUser(user),
     });
   } catch (error) {
     console.error(error);
@@ -79,7 +85,7 @@ export const loginUser = async (req, res) => {
     res.json({
       message: "Login successful",
       token,
-      user,
+      user: sanitizeUser(user),
     });
   } catch (error) {
     console.error(error);

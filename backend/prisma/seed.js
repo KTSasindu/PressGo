@@ -8,7 +8,12 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@pressgo.com" },
-    update: {},
+    update: {
+      name: "PressGo Admin",
+      phone: "0711111111",
+      password,
+      role: "ADMIN",
+    },
     create: {
       name: "PressGo Admin",
       email: "admin@pressgo.com",
@@ -20,7 +25,12 @@ async function main() {
 
   const customer = await prisma.user.upsert({
     where: { email: "kithsiri@pressgo.com" },
-    update: {},
+    update: {
+      name: "Kithsiri",
+      phone: "0771234567",
+      password,
+      role: "CUSTOMER",
+    },
     create: {
       name: "Kithsiri",
       email: "kithsiri@pressgo.com",
@@ -32,7 +42,12 @@ async function main() {
 
   const owner = await prisma.user.upsert({
     where: { email: "owner@freshwash.com" },
-    update: {},
+    update: {
+      name: "Fresh Wash Owner",
+      phone: "0722222222",
+      password,
+      role: "LAUNDRY_OWNER",
+    },
     create: {
       name: "Fresh Wash Owner",
       email: "owner@freshwash.com",
@@ -44,7 +59,12 @@ async function main() {
 
   const driver = await prisma.user.upsert({
     where: { email: "driver@pressgo.com" },
-    update: {},
+    update: {
+      name: "PressGo Driver",
+      phone: "0755555555",
+      password,
+      role: "DRIVER",
+    },
     create: {
       name: "PressGo Driver",
       email: "driver@pressgo.com",
@@ -56,7 +76,15 @@ async function main() {
 
   const shop = await prisma.laundryShop.upsert({
     where: { id: 1 },
-    update: {},
+    update: {
+      ownerId: owner.id,
+      name: "Fresh Wash Laundry",
+      address: "Peradeniya Road, Kandy",
+      phone: "0812222222",
+      openTime: "08:00",
+      closeTime: "20:00",
+      status: "ACTIVE",
+    },
     create: {
       ownerId: owner.id,
       name: "Fresh Wash Laundry",
