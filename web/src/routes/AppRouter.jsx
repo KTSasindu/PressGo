@@ -4,6 +4,7 @@ import HomePage from "../pages/HomePage.jsx";
 import LoginPage from "../pages/auth/LoginPage.jsx";
 import RegisterPage from "../pages/auth/RegisterPage.jsx";
 import CustomerDashboard from "../pages/customer/CustomerDashboard.jsx";
+import LaundryDetailsPage from "../pages/customer/LaundryDetailsPage.jsx";
 import OwnerDashboard from "../pages/owner/OwnerDashboard.jsx";
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
@@ -13,6 +14,7 @@ function AppRouter() {
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/laundries/:id" element={<LaundryDetailsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route
