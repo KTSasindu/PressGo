@@ -6,8 +6,116 @@ function LaundryDetailsPage() {
   const { id } = useParams();
   const [laundry, setLaundry] = useState(null);
   const [services, setServices] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [pickupDate, setPickupDate] = useState("");
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const grandTotal = selectedItems.reduce(
+    (total, item) => total + Number(item.price) * item.quantity,
+    0
+  );
+
+  const addToOrder = (service) => {
+    setSuccessMessage("");
+    setSubmitError("");
+    setSelectedItems((currentItems) => {
+      const existingItem = currentItems.find(
+        (item) => item.serviceId === service.id
+      );
+
+      if (existingItem) {
+        return currentItems.map((item) =>
+          item.serviceId === service.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+
+      return [
+        ...currentItems,
+        {
+          serviceId: service.id,
+          name: service.name,
+          unitType: service.unitType,
+          price: Number(service.price),
+          quantity: 1,
+        },
+      ];
+    });
+  };
+
+  const incrementQuantity = (serviceId) => {
+    setSelectedItems((currentItems) =>
+      currentItems.map((item) =>
+        item.serviceId === serviceId
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      )
+    );
+  };
+
+  const decrementQuantity = (serviceId) => {
+    setSelectedItems((currentItems) =>
+      currentItems.flatMap((item) => {
+        if (item.serviceId !== serviceId) {
+          return [item];
+        }
+
+        if (item.quantity <= 1) {
+          return [];
+        }
+
+        return [{ ...item, quantity: item.quantity - 1 }];
+      })
+    );
+  };
+
+  const removeItem = (serviceId) => {
+    setSelectedItems((currentItems) =>
+      currentItems.filter((item) => item.serviceId !== serviceId)
+    );
+  };
+
+  const handlePlaceOrder = async (event) => {
+    event.preventDefault();
+
+    if (!selectedItems.length || !pickupAddress || !pickupDate) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setSubmitError("");
+      setSuccessMessage("");
+
+      await apiClient.post("/orders", {
+        laundryShopId: Number(id),
+        pickupAddress,
+        pickupDate,
+        items: selectedItems.map((item) => ({
+          serviceId: item.serviceId,
+          quantity: item.quantity,
+        })),
+      });
+
+      setSelectedItems([]);
+      setPickupAddress("");
+      setPickupDate("");
+      setSuccessMessage("Order placed successfully.");
+    } catch (submitOrderError) {
+      setSubmitError(
+        submitOrderError.response?.data?.message ||
+          "Unable to place the order right now."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -179,8 +287,8 @@ function LaundryDetailsPage() {
                 <div className="mt-6">
                   <button
                     type="button"
-                    className="btn-secondary disabled:cursor-not-allowed disabled:opacity-80"
-                    onClick={() => alert("Order flow coming next")}
+                    className="btn-secondary"
+                    onClick={() => addToOrder(service)}
                   >
                     Add to Order
                   </button>
@@ -189,6 +297,177 @@ function LaundryDetailsPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="space-y-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-lime">
+            Order Builder
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold text-white">
+            Order Summary
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+            Build your laundry order, adjust quantities, and choose your pickup
+            details before submitting to PressGo.
+          </p>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+          <div className="panel p-6">
+            {selectedItems.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/20 p-6 text-sm text-slate-300">
+                No services selected yet. Add services above to start building
+                your order.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {selectedItems.map((item) => {
+                  const itemSubtotal = Number(item.price) * item.quantity;
+
+                  return (
+                    <article
+                      key={item.serviceId}
+                      className="rounded-3xl border border-white/10 bg-slate-950/30 p-5"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <h3 className="text-xl font-semibold text-white">
+                              {item.name}
+                            </h3>
+                            <span className="inline-flex items-center rounded-full border border-aqua/30 bg-aqua/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-aqua">
+                              {item.unitType}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-slate-400">
+                            Rs. {item.price} per {item.unitType.toLowerCase()}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center rounded-full border border-white/10 bg-white/5 p-1">
+                            <button
+                              type="button"
+                              className="h-9 w-9 rounded-full text-lg text-white transition hover:bg-white/10"
+                              onClick={() => decrementQuantity(item.serviceId)}
+                            >
+                              -
+                            </button>
+                            <span className="min-w-10 text-center text-sm font-semibold text-white">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              className="h-9 w-9 rounded-full text-lg text-white transition hover:bg-white/10"
+                              onClick={() => incrementQuantity(item.serviceId)}
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="rounded-full border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+                            onClick={() => removeItem(item.serviceId)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm">
+                        <span className="text-slate-400">Subtotal</span>
+                        <span className="text-lg font-semibold text-white">
+                          Rs. {itemSubtotal}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <form className="panel p-6" onSubmit={handlePlaceOrder}>
+            <h3 className="text-2xl font-semibold text-white">
+              Pickup Details
+            </h3>
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              Confirm where and when PressGo should arrange your laundry pickup.
+            </p>
+
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm text-slate-300">
+                  Pickup Address
+                </label>
+                <textarea
+                  className="field min-h-28 resize-none"
+                  placeholder="Enter your full pickup address"
+                  value={pickupAddress}
+                  onChange={(event) => setPickupAddress(event.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-300">
+                  Pickup Date
+                </label>
+                <input
+                  type="datetime-local"
+                  className="field"
+                  value={pickupDate}
+                  onChange={(event) => setPickupDate(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-white/10 bg-slate-950/30 p-5">
+              <div className="flex items-center justify-between text-sm text-slate-400">
+                <span>Selected Services</span>
+                <span>{selectedItems.length}</span>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-base text-slate-300">
+                <span>Total Quantity</span>
+                <span>
+                  {selectedItems.reduce((total, item) => total + item.quantity, 0)}
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+                <span className="text-sm text-slate-400">Grand Total</span>
+                <span className="text-2xl font-semibold text-white">
+                  Rs. {grandTotal}
+                </span>
+              </div>
+            </div>
+
+            {submitError ? (
+              <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {submitError}
+              </div>
+            ) : null}
+
+            {successMessage ? (
+              <div className="mt-4 rounded-2xl border border-lime/30 bg-lime/10 px-4 py-3 text-sm text-lime">
+                {successMessage}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              className="btn-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={
+                submitting ||
+                !selectedItems.length ||
+                !pickupAddress.trim() ||
+                !pickupDate
+              }
+            >
+              {submitting ? "Placing Order..." : "Place Order"}
+            </button>
+          </form>
+        </div>
       </section>
     </div>
   );
