@@ -34,6 +34,8 @@ const formatDate = (value) =>
 function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
+  const [allPayments, setAllPayments] = useState([]);
+  const [recentPayments, setRecentPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,14 +47,17 @@ function AdminDashboard() {
         setLoading(true);
         setError("");
 
-        const [statsResponse, recentOrdersResponse] = await Promise.all([
+        const [statsResponse, recentOrdersResponse, paymentsResponse] = await Promise.all([
           apiClient.get("/admin/dashboard-stats"),
           apiClient.get("/admin/recent-orders"),
+          apiClient.get("/payments/admin/all"),
         ]);
 
         if (isMounted) {
           setStats(statsResponse.data?.stats || null);
           setRecentOrders(recentOrdersResponse.data?.orders || []);
+          setAllPayments(paymentsResponse.data?.payments || []);
+          setRecentPayments((paymentsResponse.data?.payments || []).slice(0, 6));
         }
       } catch (fetchError) {
         console.error(fetchError);
@@ -142,6 +147,29 @@ function AdminDashboard() {
     },
   ];
 
+  const paymentAnalyticsCards = [
+    {
+      label: "Total Payments",
+      value: stats?.totalPayments ?? 0,
+      tone: "text-aqua",
+    },
+    {
+      label: "Paid Payments",
+      value: stats?.paidPayments ?? 0,
+      tone: "text-lime",
+    },
+    {
+      label: "Pending Payments",
+      value: allPayments.filter((payment) => payment?.status === "PENDING").length,
+      tone: "text-amber-200",
+    },
+    {
+      label: "Failed Payments",
+      value: allPayments.filter((payment) => payment?.status === "FAILED").length,
+      tone: "text-red-200",
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <PageHero
@@ -187,6 +215,20 @@ function AdminDashboard() {
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-slate-300">
                   Revenue breakdown derived from paid platform activity.
+                </p>
+              </div>
+            ))}
+          </section>
+
+          <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {paymentAnalyticsCards.map((card) => (
+              <div key={card.label} className="panel p-6">
+                <p className="text-sm text-slate-400">{card.label}</p>
+                <h2 className={`mt-3 text-3xl font-semibold ${card.tone}`}>
+                  {card.value}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-slate-300">
+                  Current payment tracking metric across the platform.
                 </p>
               </div>
             ))}
@@ -315,6 +357,95 @@ function AdminDashboard() {
                         </p>
                         <p className="mt-2 text-base text-white">
                           {order?.pickupAddress || "Unavailable"}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+                Recent Payments
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">
+                Latest Payment Activity
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                Review the latest tracked payment records without leaving the
+                admin command center.
+              </p>
+            </div>
+
+            {recentPayments.length === 0 ? (
+              <div className="panel p-6 text-sm text-slate-300">
+                No recent payment activity is available yet.
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {recentPayments.map((payment) => (
+                  <article key={payment.id} className="panel p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+                          Payment #{payment.id}
+                        </p>
+                        <h3 className="mt-3 text-2xl font-semibold text-white">
+                          {payment?.order?.customer?.name || "Customer unavailable"}
+                        </h3>
+                        <p className="mt-2 text-sm text-slate-300">
+                          {payment?.order?.laundryShop?.name ||
+                            "Laundry shop unavailable"}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                          paymentStyles[payment?.status] ||
+                          "border-white/15 bg-white/5 text-white"
+                        }`}
+                      >
+                        {payment?.status || "UNKNOWN"}
+                      </span>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 md:grid-cols-4">
+                      <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                          Order ID
+                        </p>
+                        <p className="mt-2 text-base text-white">
+                          #{payment?.orderId ?? "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                          Amount
+                        </p>
+                        <p className="mt-2 text-base text-white">
+                          {formatCurrency(payment?.amount)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                          Method
+                        </p>
+                        <p className="mt-2 text-base text-white">
+                          {payment?.method || "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                          Created
+                        </p>
+                        <p className="mt-2 text-base text-white">
+                          {formatDate(payment?.createdAt)}
                         </p>
                       </div>
                     </div>

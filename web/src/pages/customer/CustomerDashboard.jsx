@@ -53,9 +53,34 @@ function CustomerDashboard() {
         setLoading(true);
         setError("");
         const response = await apiClient.get("/orders/my-orders");
+        const baseOrders = response.data?.orders || [];
+
+        const ordersWithPayments = await Promise.all(
+          baseOrders.map(async (order) => {
+            try {
+              const paymentResponse = await apiClient.get(
+                `/payments/order/${order.id}`
+              );
+
+              return {
+                ...order,
+                payment: paymentResponse.data?.payment || null,
+              };
+            } catch (paymentError) {
+              if (paymentError.response?.status === 404) {
+                return {
+                  ...order,
+                  payment: null,
+                };
+              }
+
+              throw paymentError;
+            }
+          })
+        );
 
         if (isMounted) {
-          setOrders(response.data?.orders || []);
+          setOrders(ordersWithPayments);
         }
       } catch (fetchError) {
         console.error(fetchError);
@@ -215,6 +240,24 @@ function CustomerDashboard() {
                   </p>
                   <p className="mt-2 text-base text-white">
                     {formatCurrency(order?.totalAmount)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Payment Method
+                  </p>
+                  <p className="mt-2 text-base text-white">
+                    {order?.payment?.method || "Not recorded"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Payment Date
+                  </p>
+                  <p className="mt-2 text-base text-white">
+                    {formatDate(order?.payment?.createdAt)}
                   </p>
                 </div>
 

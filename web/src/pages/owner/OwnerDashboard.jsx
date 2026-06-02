@@ -112,6 +112,16 @@ function OwnerDashboard() {
   const completedOrders = orders.filter(
     (order) => order?.status === "COMPLETED"
   ).length;
+  const totalPaidRevenue = orders
+    .filter((order) => order?.paymentStatus === "PAID")
+    .reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
+  const pendingRevenue = orders
+    .filter((order) => order?.paymentStatus === "PENDING")
+    .reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
+  const completedPaidOrders = orders.filter(
+    (order) =>
+      order?.status === "COMPLETED" && order?.paymentStatus === "PAID"
+  ).length;
 
   const summaryCards = [
     { label: "Total Orders", value: totalOrders, tone: "text-aqua" },
@@ -122,6 +132,24 @@ function OwnerDashboard() {
       tone: "text-cyan-200",
     },
     { label: "Completed Orders", value: completedOrders, tone: "text-lime" },
+  ];
+
+  const revenueCards = [
+    {
+      label: "Total Paid Revenue",
+      value: formatCurrency(totalPaidRevenue),
+      tone: "text-lime",
+    },
+    {
+      label: "Pending Revenue",
+      value: formatCurrency(pendingRevenue),
+      tone: "text-amber-200",
+    },
+    {
+      label: "Completed Paid Orders",
+      value: completedPaidOrders,
+      tone: "text-aqua",
+    },
   ];
 
   return (
@@ -141,6 +169,20 @@ function OwnerDashboard() {
             </h2>
             <p className="mt-3 text-sm leading-7 text-slate-300">
               Live operations summary based on your current shop orders.
+            </p>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {revenueCards.map((card) => (
+          <div key={card.label} className="panel p-6">
+            <p className="text-sm text-slate-400">{card.label}</p>
+            <h2 className={`mt-3 text-3xl font-semibold ${card.tone}`}>
+              {card.value}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              Payment visibility for your current laundry shop workload.
             </p>
           </div>
         ))}
