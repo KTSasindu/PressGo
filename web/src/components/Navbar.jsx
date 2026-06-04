@@ -17,7 +17,7 @@ function Navbar() {
       ADMIN: "/admin/dashboard",
       LAUNDRY_OWNER: "/owner/dashboard",
       CUSTOMER: "/customer/dashboard",
-      DRIVER: "/customer/dashboard",
+      DRIVER: "/driver/dashboard",
     }[user?.role] || "/customer/dashboard";
   const navItems = authenticated
     ? [

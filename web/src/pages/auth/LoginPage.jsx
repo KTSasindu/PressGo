@@ -7,7 +7,7 @@ const roleRedirects = {
   ADMIN: "/admin/dashboard",
   LAUNDRY_OWNER: "/owner/dashboard",
   CUSTOMER: "/customer/dashboard",
-  DRIVER: "/customer/dashboard",
+  DRIVER: "/driver/dashboard",
 };
 
 function LoginPage() {
