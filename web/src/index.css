@@ -31,18 +31,22 @@ body {
   }
 
   .panel {
-    @apply rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl shadow-panel;
+    @apply rounded-3xl border border-white/10 bg-white/10 shadow-panel backdrop-blur-xl transition-colors duration-200 hover:border-white/15;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-full bg-aqua px-5 py-3 text-sm font-semibold text-ink transition hover:bg-cyan-200;
+    @apply inline-flex items-center justify-center rounded-full bg-aqua px-5 py-3 text-sm font-semibold text-ink shadow-lg shadow-aqua/20 transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-mist transition hover:bg-white/10;
+    @apply inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-mist transition-all duration-200 hover:-translate-y-0.5 hover:border-aqua/35 hover:bg-white/10 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:border-white/15 disabled:hover:text-mist;
   }
 
   .field {
-    @apply w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-mist placeholder:text-slate-400 focus:border-aqua focus:outline-none;
+    @apply w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-mist transition-all duration-200 placeholder:text-slate-500 focus:border-aqua focus:outline-none focus:ring-2 focus:ring-aqua/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:placeholder:text-slate-600;
+  }
+
+  .pressable {
+    @apply transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink;
   }
 }
