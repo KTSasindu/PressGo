@@ -96,7 +96,7 @@ function LaundryDetailsPage() {
       await apiClient.post("/orders", {
         laundryShopId: Number(id),
         pickupAddress,
-        pickupDate,
+        pickupDate: new Date(pickupDate).toISOString(),
         items: selectedItems.map((item) => ({
           serviceId: item.serviceId,
           quantity: item.quantity,
