@@ -5,6 +5,7 @@ import LoginPage from "../pages/auth/LoginPage.jsx";
 import RegisterPage from "../pages/auth/RegisterPage.jsx";
 import CustomerDashboard from "../pages/customer/CustomerDashboard.jsx";
 import LaundryDetailsPage from "../pages/customer/LaundryDetailsPage.jsx";
+import OrderDetailsPage from "../pages/orders/OrderDetailsPage.jsx";
 import DriverDashboard from "../pages/driver/DriverDashboard.jsx";
 import OwnerDashboard from "../pages/owner/OwnerDashboard.jsx";
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
@@ -19,6 +20,15 @@ function AppRouter() {
         <Route path="/laundries/:id" element={<LaundryDetailsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={["CUSTOMER", "LAUNDRY_OWNER", "ADMIN"]}
+            />
+          }
+        >
+          <Route path="/orders/:id" element={<OrderDetailsPage />} />
+        </Route>
         <Route element={<ProtectedRoute allowedRoles={["CUSTOMER"]} />}>
           <Route path="/customer/dashboard" element={<CustomerDashboard />} />
         </Route>
