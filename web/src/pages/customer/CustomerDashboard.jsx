@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
@@ -331,6 +332,12 @@ function CustomerDashboard() {
                     No order items available for this order.
                   </div>
                 )}
+              </div>
+
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <Link to={`/orders/${order.id}`} className="btn-secondary">
+                  View Full Order Details
+                </Link>
               </div>
             </article>
           ))}
