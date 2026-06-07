@@ -209,6 +209,23 @@ export const getOrderById = async (req, res) => {
         },
         payment: true,
         review: true,
+        statusHistory: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+        deliveryAssignment: {
+          include: {
+            driver: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
       },
     });
 
