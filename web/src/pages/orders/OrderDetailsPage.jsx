@@ -69,6 +69,11 @@ function OrderDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [rating, setRating] = useState("5");
+  const [comment, setComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [reviewSuccess, setReviewSuccess] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -121,6 +126,44 @@ function OrderDetailsPage() {
       LAUNDRY_OWNER: "/owner/dashboard",
       CUSTOMER: "/customer/dashboard",
     }[user?.role] || "/";
+  const canReview =
+    user?.role === "CUSTOMER" &&
+    order?.status === "COMPLETED" &&
+    !order?.review;
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault();
+
+    try {
+      setReviewSubmitting(true);
+      setReviewError("");
+      setReviewSuccess("");
+
+      const response = await apiClient.post("/reviews", {
+        orderId: Number(id),
+        rating: Number(rating),
+        comment,
+      });
+
+      setOrder((currentOrder) => ({
+        ...currentOrder,
+        review: response.data?.review || {
+          rating: Number(rating),
+          comment,
+        },
+      }));
+      setReviewSuccess("Review submitted successfully.");
+      setComment("");
+    } catch (submitError) {
+      console.error(submitError);
+      setReviewError(
+        submitError.response?.data?.message ||
+          "Unable to submit your review right now."
+      );
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -505,6 +548,118 @@ function OrderDetailsPage() {
                 No item details are available for this order.
               </div>
             )}
+          </section>
+
+          <section className="panel p-6 md:p-8">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+                Review
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">
+                Share your experience
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                Customers can rate completed orders once. Your feedback helps
+                improve service quality across PressGo.
+              </p>
+            </div>
+
+            {order?.review ? (
+              <div className="mt-6 rounded-3xl border border-white/10 bg-slate-950/20 p-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm text-slate-400">Your rating</p>
+                    <p className="mt-2 text-2xl font-semibold text-white">
+                      {"★".repeat(Number(order.review?.rating || 0))}
+                      <span className="ml-2 text-base text-slate-300">
+                        {order.review?.rating || 0}/5
+                      </span>
+                    </p>
+                  </div>
+
+                  <p className="text-sm text-slate-400">
+                    Submitted review
+                  </p>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm leading-7 text-slate-200">
+                    {order.review?.comment || "No comment provided."}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {reviewSuccess ? (
+              <div className="mt-6 rounded-2xl border border-lime-400/30 bg-lime-500/10 px-4 py-3 text-sm text-lime-100">
+                {reviewSuccess}
+              </div>
+            ) : null}
+
+            {reviewError ? (
+              <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {reviewError}
+              </div>
+            ) : null}
+
+            {canReview ? (
+              <form className="mt-6 space-y-5" onSubmit={handleReviewSubmit}>
+                <div>
+                  <label
+                    htmlFor="rating"
+                    className="mb-2 block text-sm font-medium text-slate-300"
+                  >
+                    Rating
+                  </label>
+                  <select
+                    id="rating"
+                    value={rating}
+                    onChange={(event) => setRating(event.target.value)}
+                    className="field"
+                    disabled={reviewSubmitting}
+                  >
+                    {[5, 4, 3, 2, 1].map((value) => (
+                      <option key={value} value={value}>
+                        {value} Star{value > 1 ? "s" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="comment"
+                    className="mb-2 block text-sm font-medium text-slate-300"
+                  >
+                    Comment
+                  </label>
+                  <textarea
+                    id="comment"
+                    rows="5"
+                    value={comment}
+                    onChange={(event) => setComment(event.target.value)}
+                    className="field resize-none"
+                    placeholder="Tell us how the order went."
+                    disabled={reviewSubmitting}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={reviewSubmitting}
+                >
+                  {reviewSubmitting ? "Submitting..." : "Submit Review"}
+                </button>
+              </form>
+            ) : null}
+
+            {!order?.review && !canReview ? (
+              <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-950/20 p-4 text-sm text-slate-300">
+                Reviews become available for customers once an order reaches
+                the completed stage.
+              </div>
+            ) : null}
           </section>
         </>
       ) : null}
