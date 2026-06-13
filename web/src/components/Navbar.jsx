@@ -12,16 +12,27 @@ function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const authenticated = isAuthenticated();
   const user = getUser();
+  const displayName = user?.name || "Account";
+  const displayEmail = user?.email || "Signed-in session";
+  const displayRole = user?.role || "USER";
   const dashboardPath =
     {
       ADMIN: "/admin/dashboard",
       LAUNDRY_OWNER: "/owner/dashboard",
       CUSTOMER: "/customer/dashboard",
       DRIVER: "/driver/dashboard",
-    }[user?.role] || "/customer/dashboard";
+    }[user?.role] || "/login";
+  const ordersPath =
+    {
+      ADMIN: "/admin/dashboard",
+      LAUNDRY_OWNER: "/owner/dashboard",
+      CUSTOMER: "/customer/dashboard",
+      DRIVER: "/driver/dashboard",
+    }[user?.role] || "/login";
   const navItems = authenticated
     ? [
         { label: "Dashboard", to: dashboardPath },
+        { label: "Orders", to: ordersPath },
         ...(user?.role === "ADMIN"
           ? [{ label: "Payments", to: "/admin/payments" }]
           : []),
@@ -120,10 +131,15 @@ function Navbar() {
               <div className="mt-8 rounded-[28px] border border-white/10 bg-white/5 p-5">
                 <p className="text-sm text-slate-400">Signed in as</p>
                 <h3 className="mt-2 text-xl font-semibold text-white">
-                  {user?.name || "PressGo User"}
+                  {displayName}
                 </h3>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.22em] text-aqua">
-                  {user?.role || "USER"}
+                <p className="mt-2 text-sm text-slate-300">
+                  {displayEmail}
+                </p>
+                <p className="mt-4">
+                  <span className="inline-flex items-center rounded-full border border-aqua/30 bg-aqua/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-aqua">
+                    {displayRole}
+                  </span>
                 </p>
               </div>
             ) : null}
