@@ -1,10 +1,10 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
+import config from "./config/env.js";
 import authRoutes from "./routes/authRoutes.js";
 import testRoutes from "./routes/testRoutes.js";
 import laundryRoutes from "./routes/laundryRoutes.js";
@@ -19,9 +19,6 @@ import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
 
-// Load environment variables from .env file
-dotenv.config();
-
 const app = express();
 
 const apiLimiter = rateLimit({
@@ -33,7 +30,11 @@ const apiLimiter = rateLimit({
 });
 
 // Global middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: config.frontendUrl,
+  })
+);
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
@@ -63,15 +64,13 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5050;
-
 const currentFilePath = fileURLToPath(import.meta.url);
 const isDirectRun = process.argv[1] === currentFilePath;
-const isTestEnv = process.env.NODE_ENV === "test";
+const isTestEnv = config.nodeEnv === "test";
 
 if (isDirectRun && !isTestEnv) {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
+  app.listen(config.port, "0.0.0.0", () => {
+    console.log(`Server running on port ${config.port}`);
   });
 }
 
