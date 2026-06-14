@@ -35,6 +35,34 @@ const dashboardPaths = {
   DRIVER: "/driver/dashboard",
 };
 
+const getMinutesFromTime = (value) => {
+  if (!value || !value.includes(":")) {
+    return null;
+  }
+
+  const [hours, minutes] = value.split(":").map(Number);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+};
+
+const isShopOpenNow = (shop) => {
+  const openMinutes = getMinutesFromTime(shop?.openTime);
+  const closeMinutes = getMinutesFromTime(shop?.closeTime);
+
+  if (openMinutes === null || closeMinutes === null) {
+    return false;
+  }
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+};
+
 function HomePage() {
   const authenticated = isAuthenticated();
   const user = getUser();
@@ -43,6 +71,8 @@ function HomePage() {
   const [error, setError] = useState("");
   const [pickupAddress, setPickupAddress] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [openNowOnly, setOpenNowOnly] = useState(false);
+  const [sortOption, setSortOption] = useState("Recommended");
 
   useEffect(() => {
     let isMounted = true;
@@ -78,17 +108,76 @@ function HomePage() {
 
   const filteredLaundries = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
+    const nextLaundries = laundries.filter((laundry) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [laundry?.name, laundry?.address, laundry?.phone]
+          .filter(Boolean)
+          .some((field) => field.toLowerCase().includes(normalizedSearch));
 
-    if (!normalizedSearch) {
-      return laundries;
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (!openNowOnly) {
+        return true;
+      }
+
+      return isShopOpenNow(laundry);
+    });
+
+    const sortedLaundries = [...nextLaundries];
+
+    if (sortOption === "Name A-Z") {
+      sortedLaundries.sort((left, right) =>
+        (left?.name || "").localeCompare(right?.name || "")
+      );
     }
 
-    return laundries.filter((laundry) =>
-      [laundry?.name, laundry?.address]
-        .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(normalizedSearch))
-    );
-  }, [laundries, searchTerm]);
+    if (sortOption === "Opens Earliest") {
+      sortedLaundries.sort((left, right) => {
+        const leftOpen = getMinutesFromTime(left?.openTime);
+        const rightOpen = getMinutesFromTime(right?.openTime);
+
+        if (leftOpen === null && rightOpen === null) {
+          return 0;
+        }
+
+        if (leftOpen === null) {
+          return 1;
+        }
+
+        if (rightOpen === null) {
+          return -1;
+        }
+
+        return leftOpen - rightOpen;
+      });
+    }
+
+    if (sortOption === "Closes Latest") {
+      sortedLaundries.sort((left, right) => {
+        const leftClose = getMinutesFromTime(left?.closeTime);
+        const rightClose = getMinutesFromTime(right?.closeTime);
+
+        if (leftClose === null && rightClose === null) {
+          return 0;
+        }
+
+        if (leftClose === null) {
+          return 1;
+        }
+
+        if (rightClose === null) {
+          return -1;
+        }
+
+        return rightClose - leftClose;
+      });
+    }
+
+    return sortedLaundries;
+  }, [laundries, openNowOnly, searchTerm, sortOption]);
 
   const quickActions = [
     {
@@ -281,7 +370,7 @@ function HomePage() {
       </section>
 
       <section className="panel p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-lime">
               Active Discovery
@@ -295,16 +384,48 @@ function HomePage() {
             </p>
           </div>
 
-          <label className="block lg:w-80">
-            <span className="sr-only">Search laundries</span>
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by laundry name or address"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-aqua/40"
-            />
-          </label>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <label className="block xl:w-[28rem]">
+              <span className="sr-only">Search laundries</span>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by laundry name, address, or phone"
+                className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-aqua/40"
+              />
+            </label>
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <label className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={openNowOnly}
+                  onChange={(event) => setOpenNowOnly(event.target.checked)}
+                  className="h-4 w-4 rounded border-white/20 bg-slate-950/40 text-aqua focus:ring-aqua/40"
+                />
+                Open now
+              </label>
+
+              <label className="block sm:w-52">
+                <span className="sr-only">Sort laundries</span>
+                <select
+                  value={sortOption}
+                  onChange={(event) => setSortOption(event.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition focus:border-aqua/40"
+                >
+                  <option>Recommended</option>
+                  <option>Name A-Z</option>
+                  <option>Opens Earliest</option>
+                  <option>Closes Latest</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-400">
+            Showing {filteredLaundries.length} active laundries
+          </p>
         </div>
       </section>
 
@@ -322,7 +443,7 @@ function HomePage() {
 
       {!loading && !error && filteredLaundries.length === 0 ? (
         <section className="panel p-6 text-sm text-slate-300">
-          No active laundry shops matched your current search.
+          No active laundry shops matched your current filters.
         </section>
       ) : null}
 
@@ -364,6 +485,18 @@ function HomePage() {
                   </dd>
                 </div>
               </dl>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <span
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                    isShopOpenNow(laundry)
+                      ? "border-lime-400/30 bg-lime-500/10 text-lime-200"
+                      : "border-slate-400/30 bg-slate-500/10 text-slate-200"
+                  }`}
+                >
+                  {isShopOpenNow(laundry) ? "Open now" : "Closed now"}
+                </span>
+              </div>
 
               <div className="mt-6">
                 <Link to={`/laundries/${laundry.id}`} className="btn-secondary">
