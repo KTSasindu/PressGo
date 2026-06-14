@@ -9,6 +9,7 @@ function NotificationBell() {
   const [error, setError] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
+  const [markingAllAsRead, setMarkingAllAsRead] = useState(false);
   const containerRef = useRef(null);
   const authenticated = isAuthenticated();
 
@@ -23,9 +24,9 @@ function NotificationBell() {
 
     let isMounted = true;
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = async (showLoader = true) => {
       try {
-        if (isMounted) {
+        if (isMounted && showLoader) {
           setLoading(true);
           setError("");
         }
@@ -33,7 +34,13 @@ function NotificationBell() {
         const response = await apiClient.get("/notifications/my");
 
         if (isMounted) {
-          setNotifications(response.data?.notifications || []);
+          const sortedNotifications = [...(response.data?.notifications || [])]
+            .sort(
+              (firstNotification, secondNotification) =>
+                new Date(secondNotification?.createdAt || 0).getTime() -
+                new Date(firstNotification?.createdAt || 0).getTime()
+            );
+          setNotifications(sortedNotifications);
         }
       } catch (fetchError) {
         console.error(fetchError);
@@ -42,14 +49,16 @@ function NotificationBell() {
           setError("Unable to load notifications right now.");
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && showLoader) {
           setLoading(false);
         }
       }
     };
 
     fetchNotifications();
-    const intervalId = setInterval(fetchNotifications, 30000);
+    const intervalId = setInterval(() => {
+      fetchNotifications(false);
+    }, 30000);
 
     return () => {
       isMounted = false;
@@ -97,6 +106,64 @@ function NotificationBell() {
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await apiClient.get("/notifications/my");
+      const sortedNotifications = [...(response.data?.notifications || [])].sort(
+        (firstNotification, secondNotification) =>
+          new Date(secondNotification?.createdAt || 0).getTime() -
+          new Date(firstNotification?.createdAt || 0).getTime()
+      );
+      setNotifications(sortedNotifications);
+    } catch (refreshError) {
+      console.error(refreshError);
+      setError(
+        refreshError.response?.data?.message ||
+          "Unable to refresh notifications right now."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    const unreadNotifications = notifications.filter(
+      (notification) => !notification?.isRead
+    );
+
+    if (unreadNotifications.length === 0) {
+      return;
+    }
+
+    try {
+      setMarkingAllAsRead(true);
+      setError("");
+
+      await Promise.all(
+        unreadNotifications.map((notification) =>
+          apiClient.patch(`/notifications/${notification.id}/read`)
+        )
+      );
+
+      setNotifications((currentNotifications) =>
+        currentNotifications.map((notification) => ({
+          ...notification,
+          isRead: true,
+        }))
+      );
+    } catch (updateError) {
+      console.error(updateError);
+      setError(
+        updateError.response?.data?.message ||
+          "Unable to mark all notifications as read."
+      );
+    } finally {
+      setMarkingAllAsRead(false);
+    }
+  };
+
   if (!authenticated) {
     return null;
   }
@@ -129,7 +196,10 @@ function NotificationBell() {
           loading={loading}
           error={error}
           onMarkAsRead={handleMarkAsRead}
+          onMarkAllAsRead={handleMarkAllAsRead}
+          onRefresh={handleRefresh}
           updatingId={updatingId}
+          markingAllAsRead={markingAllAsRead}
         />
       ) : null}
     </div>

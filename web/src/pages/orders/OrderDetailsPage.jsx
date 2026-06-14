@@ -3,6 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
 import { getUser } from "../../utils/authStorage.js";
+import {
+  formatRelativeTime,
+  formatTimestamp,
+} from "../../utils/dateHelpers.js";
 
 const timelineSteps = [
   "PENDING",
@@ -14,15 +18,7 @@ const timelineSteps = [
   "COMPLETED",
 ];
 
-const statusSequence = [
-  "PENDING",
-  "ACCEPTED_BY_LAUNDRY",
-  "PICKED_UP",
-  "WASHING",
-  "READY_FOR_DELIVERY",
-  "DELIVERED",
-  "COMPLETED",
-];
+const statusSequence = [...timelineSteps];
 
 const statusStyles = {
   PENDING: "border-amber-400/30 bg-amber-500/10 text-amber-200",
@@ -44,15 +40,6 @@ const paymentStyles = {
 };
 
 const formatCurrency = (value) => `Rs. ${Number(value || 0)}`;
-
-const formatDate = (value, fallback = "N/A") =>
-  value
-    ? new Date(value).toLocaleString("en-LK", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : fallback;
-
 const formatStatusLabel = (value) =>
   value ? value.replaceAll("_", " ") : "UNKNOWN";
 
@@ -120,19 +107,47 @@ function OrderDetailsPage() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [reviewSuccess, setReviewSuccess] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [statusUpdatedAt, setStatusUpdatedAt] = useState(null);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchOrder = async () => {
+    const fetchOrder = async (showLoader = true) => {
       try {
-        setLoading(true);
+        if (showLoader && isMounted) {
+          setLoading(true);
+        }
+
         setError("");
         setNotFound(false);
         const response = await apiClient.get(`/orders/${id}`);
+        const nextOrder = response.data?.order || null;
 
         if (isMounted) {
-          setOrder(response.data?.order || null);
+          setOrder((currentOrder) => {
+            if (
+              currentOrder?.status &&
+              nextOrder?.status &&
+              currentOrder.status !== nextOrder.status
+            ) {
+              setStatusUpdatedAt(Date.now());
+            }
+
+            return nextOrder;
+          });
+          setLastUpdatedAt(new Date().toISOString());
         }
       } catch (fetchError) {
         console.error(fetchError);
@@ -152,16 +167,20 @@ function OrderDetailsPage() {
             "Unable to load this order right now."
         );
       } finally {
-        if (isMounted) {
+        if (showLoader && isMounted) {
           setLoading(false);
         }
       }
     };
 
     fetchOrder();
+    const intervalId = setInterval(() => {
+      fetchOrder(false);
+    }, 20000);
 
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
     };
   }, [id]);
 
@@ -183,6 +202,8 @@ function OrderDetailsPage() {
           new Date(secondEntry?.createdAt || 0).getTime()
       )
     : [];
+  const showRecentlyUpdated =
+    statusUpdatedAt && Date.now() - statusUpdatedAt < 30000;
 
   const handleReviewSubmit = async (event) => {
     event.preventDefault();
@@ -287,9 +308,24 @@ function OrderDetailsPage() {
                     "border-white/15 bg-white/5 text-white"
                   }`}
                 >
-                  Payment: {order?.payment?.status || order?.paymentStatus || "UNKNOWN"}
+                  Payment:{" "}
+                  {order?.payment?.status || order?.paymentStatus || "UNKNOWN"}
                 </span>
+
+                {showRecentlyUpdated ? (
+                  <span className="inline-flex items-center rounded-full border border-coral/30 bg-coral/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-coral">
+                    Recently Updated
+                  </span>
+                ) : null}
               </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+              <span>Auto-refresh every 20 seconds</span>
+              <span>
+                Last updated{" "}
+                {lastUpdatedAt ? formatRelativeTime(lastUpdatedAt, now) : "N/A"}
+              </span>
             </div>
 
             {(order?.status === "CANCELLED" || order?.status === "REJECTED") ? (
@@ -329,6 +365,7 @@ function OrderDetailsPage() {
                   const isCurrent = stageState === "current";
                   const isLast = index === timelineSteps.length - 1;
 
+                  return (
                     <div
                       key={step}
                       className="grid grid-cols-[auto_1fr] gap-4 pb-5 last:pb-0"
@@ -398,6 +435,7 @@ function OrderDetailsPage() {
                         </p>
                       </div>
                     </div>
+                  );
                 })}
               </div>
 
@@ -426,12 +464,13 @@ function OrderDetailsPage() {
                             {formatStatusLabel(entry?.status)}
                           </span>
                           <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                            {formatDate(entry?.createdAt)}
+                            {formatTimestamp(entry?.createdAt)}
                           </span>
                         </div>
 
                         <p className="mt-3 text-sm leading-6 text-slate-300">
-                          {entry?.note || "No additional note was provided for this update."}
+                          {entry?.note ||
+                            "No additional note was provided for this update."}
                         </p>
                       </article>
                     ))}
@@ -462,7 +501,7 @@ function OrderDetailsPage() {
                     Created Date
                   </p>
                   <p className="mt-2 text-base text-white">
-                    {formatDate(order?.createdAt)}
+                    {formatTimestamp(order?.createdAt)}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
@@ -478,7 +517,7 @@ function OrderDetailsPage() {
                     Pickup Date
                   </p>
                   <p className="mt-2 text-base text-white">
-                    {formatDate(order?.pickupDate)}
+                    {formatTimestamp(order?.pickupDate)}
                   </p>
                 </div>
               </div>
@@ -566,7 +605,9 @@ function OrderDetailsPage() {
                     Status
                   </p>
                   <p className="mt-2 text-base text-white">
-                    {order?.payment?.status || order?.paymentStatus || "Unavailable"}
+                    {order?.payment?.status ||
+                      order?.paymentStatus ||
+                      "Unavailable"}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
@@ -583,7 +624,7 @@ function OrderDetailsPage() {
                   </p>
                   <p className="mt-2 text-base text-white">
                     {order?.payment?.status === "PAID"
-                      ? formatDate(order?.payment?.createdAt)
+                      ? formatTimestamp(order?.payment?.createdAt)
                       : "Not paid yet"}
                   </p>
                 </div>
@@ -609,7 +650,7 @@ function OrderDetailsPage() {
                     Picked Up At
                   </p>
                   <p className="mt-2 text-base text-white">
-                    {formatDate(
+                    {formatTimestamp(
                       order?.deliveryAssignment?.pickedUpAt,
                       "Not available from current API"
                     )}
@@ -620,7 +661,7 @@ function OrderDetailsPage() {
                     Delivered At
                   </p>
                   <p className="mt-2 text-base text-white">
-                    {formatDate(
+                    {formatTimestamp(
                       order?.deliveryAssignment?.deliveredAt,
                       "Not available from current API"
                     )}
@@ -724,9 +765,7 @@ function OrderDetailsPage() {
                     </p>
                   </div>
 
-                  <p className="text-sm text-slate-400">
-                    Submitted review
-                  </p>
+                  <p className="text-sm text-slate-400">Submitted review</p>
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">

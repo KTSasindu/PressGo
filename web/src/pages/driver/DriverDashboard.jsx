@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import {
+  formatRelativeTime,
+  formatTimestamp,
+} from "../../utils/dateHelpers.js";
 
 const statusStyles = {
   PENDING: "border-amber-400/30 bg-amber-500/10 text-amber-200",
@@ -14,31 +18,82 @@ const statusStyles = {
   REJECTED: "border-rose-400/30 bg-rose-500/10 text-rose-200",
 };
 
-const formatDate = (value) =>
-  value
-    ? new Date(value).toLocaleString("en-LK", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : "Not yet";
+const getDeliveryState = (delivery) => {
+  if (delivery?.deliveredAt) {
+    return "Delivered";
+  }
+
+  if (delivery?.pickedUpAt) {
+    return "In Delivery";
+  }
+
+  return "Pending Pickup";
+};
+
+const filterOptions = ["All", "Pending Pickup", "In Delivery", "Delivered"];
 
 function DriverDashboard() {
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingDeliveryId, setUpdatingDeliveryId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [recentlyUpdatedMap, setRecentlyUpdatedMap] = useState({});
 
-  const fetchDeliveries = async () => {
+  const fetchDeliveries = async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
+
       setError("");
       const response = await apiClient.get("/deliveries/my-deliveries");
-      setDeliveries(response.data?.deliveries || []);
+      const nextDeliveries = response.data?.deliveries || [];
+
+      setDeliveries((currentDeliveries) => {
+        const currentDeliveryMap = new Map(
+          currentDeliveries.map((delivery) => [
+            delivery?.id,
+            `${delivery?.pickedUpAt || ""}|${delivery?.deliveredAt || ""}|${
+              delivery?.order?.status || ""
+            }`,
+          ])
+        );
+
+        const updates = nextDeliveries.reduce((accumulator, delivery) => {
+          const previousSnapshot = currentDeliveryMap.get(delivery?.id);
+          const nextSnapshot = `${delivery?.pickedUpAt || ""}|${
+            delivery?.deliveredAt || ""
+          }|${delivery?.order?.status || ""}`;
+
+          if (previousSnapshot && previousSnapshot !== nextSnapshot) {
+            accumulator[delivery.id] = Date.now();
+          }
+
+          return accumulator;
+        }, {});
+
+        if (Object.keys(updates).length > 0) {
+          setRecentlyUpdatedMap((currentMap) => ({
+            ...currentMap,
+            ...updates,
+          }));
+        }
+
+        return nextDeliveries;
+      });
+
+      setLastUpdatedAt(new Date().toISOString());
     } catch (fetchError) {
       console.error(fetchError);
       setError("Unable to load your assigned deliveries right now.");
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   };
 
@@ -46,12 +101,34 @@ function DriverDashboard() {
     fetchDeliveries();
   }, []);
 
+  useEffect(() => {
+    const tickerId = setInterval(() => {
+      setNow(Date.now());
+      setRecentlyUpdatedMap((currentMap) =>
+        Object.fromEntries(
+          Object.entries(currentMap).filter(
+            ([, timestamp]) => Date.now() - timestamp < 30000
+          )
+        )
+      );
+    }, 1000);
+
+    const refreshId = setInterval(() => {
+      fetchDeliveries(false);
+    }, 20000);
+
+    return () => {
+      clearInterval(tickerId);
+      clearInterval(refreshId);
+    };
+  }, []);
+
   const handleMarkPickedUp = async (deliveryId) => {
     try {
       setUpdatingDeliveryId(deliveryId);
       setError("");
       await apiClient.patch(`/deliveries/${deliveryId}/picked-up`);
-      await fetchDeliveries();
+      await fetchDeliveries(false);
     } catch (updateError) {
       console.error(updateError);
       setError(
@@ -68,7 +145,7 @@ function DriverDashboard() {
       setUpdatingDeliveryId(deliveryId);
       setError("");
       await apiClient.patch(`/deliveries/${deliveryId}/delivered`, {});
-      await fetchDeliveries();
+      await fetchDeliveries(false);
     } catch (updateError) {
       console.error(updateError);
       setError(
@@ -80,15 +157,40 @@ function DriverDashboard() {
     }
   };
 
+  const filteredDeliveries = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return deliveries.filter((delivery) => {
+      const order = delivery?.order;
+      const deliveryState = getDeliveryState(delivery);
+      const matchesFilter =
+        activeFilter === "All" || activeFilter === deliveryState;
+
+      if (!matchesFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return (
+        String(order?.id || "").includes(normalizedSearch) ||
+        order?.customer?.name?.toLowerCase().includes(normalizedSearch) ||
+        order?.laundryShop?.name?.toLowerCase().includes(normalizedSearch)
+      );
+    });
+  }, [activeFilter, deliveries, searchTerm]);
+
   const totalDeliveries = deliveries.length;
   const pendingPickup = deliveries.filter(
-    (delivery) => !delivery?.pickedUpAt
+    (delivery) => getDeliveryState(delivery) === "Pending Pickup"
   ).length;
   const inDelivery = deliveries.filter(
-    (delivery) => delivery?.pickedUpAt && !delivery?.deliveredAt
+    (delivery) => getDeliveryState(delivery) === "In Delivery"
   ).length;
   const delivered = deliveries.filter(
-    (delivery) => Boolean(delivery?.deliveredAt)
+    (delivery) => getDeliveryState(delivery) === "Delivered"
   ).length;
 
   const summaryCards = [
@@ -120,6 +222,47 @@ function DriverDashboard() {
         ))}
       </section>
 
+      <section className="panel p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-3">
+            {filterOptions.map((filterOption) => (
+              <button
+                key={filterOption}
+                type="button"
+                onClick={() => setActiveFilter(filterOption)}
+                className={[
+                  "rounded-full border px-4 py-2 text-sm transition",
+                  activeFilter === filterOption
+                    ? "border-aqua/40 bg-aqua/10 text-aqua"
+                    : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white",
+                ].join(" ")}
+              >
+                {filterOption}
+              </button>
+            ))}
+          </div>
+
+          <label className="block lg:w-80">
+            <span className="sr-only">Search deliveries</span>
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by order ID, customer, or laundry"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-aqua/40"
+            />
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+          <span>{filteredDeliveries.length} matching deliveries</span>
+          <span>
+            Last updated{" "}
+            {lastUpdatedAt ? formatRelativeTime(lastUpdatedAt, now) : "N/A"}
+          </span>
+        </div>
+      </section>
+
       {loading ? (
         <section className="panel p-6 text-sm text-slate-300">
           Loading assigned deliveries...
@@ -132,16 +275,15 @@ function DriverDashboard() {
         </section>
       ) : null}
 
-      {!loading && !error && deliveries.length === 0 ? (
+      {!loading && !error && filteredDeliveries.length === 0 ? (
         <section className="panel p-6 text-sm text-slate-300">
-          No deliveries are assigned to you yet. New pickup requests will show
-          up here as soon as they are dispatched.
+          No deliveries matched your current search or filter.
         </section>
       ) : null}
 
-      {!loading && !error && deliveries.length > 0 ? (
+      {!loading && !error && filteredDeliveries.length > 0 ? (
         <section className="space-y-6">
-          {deliveries.map((delivery) => {
+          {filteredDeliveries.map((delivery) => {
             const order = delivery?.order;
             const isPickedUp = Boolean(delivery?.pickedUpAt);
             const isDelivered = Boolean(delivery?.deliveredAt);
@@ -172,12 +314,14 @@ function DriverDashboard() {
                     </span>
 
                     <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200">
-                      {isDelivered
-                        ? "Delivered"
-                        : isPickedUp
-                          ? "In Delivery"
-                          : "Pending Pickup"}
+                      {getDeliveryState(delivery)}
                     </span>
+
+                    {recentlyUpdatedMap[delivery.id] ? (
+                      <span className="inline-flex items-center rounded-full border border-coral/30 bg-coral/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-coral">
+                        Recently Updated
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
@@ -208,7 +352,7 @@ function DriverDashboard() {
                       Picked Up At
                     </p>
                     <p className="mt-2 text-base text-white">
-                      {formatDate(delivery?.pickedUpAt)}
+                      {formatTimestamp(delivery?.pickedUpAt, "Not yet")}
                     </p>
                   </div>
 
@@ -217,7 +361,7 @@ function DriverDashboard() {
                       Delivered At
                     </p>
                     <p className="mt-2 text-base text-white">
-                      {formatDate(delivery?.deliveredAt)}
+                      {formatTimestamp(delivery?.deliveredAt, "Not yet")}
                     </p>
                   </div>
                 </div>

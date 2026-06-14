@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import {
+  formatRelativeTime,
+  formatTimestamp,
+} from "../../utils/dateHelpers.js";
 
 const statusStyles = {
   PENDING: "border-amber-400/30 bg-amber-500/10 text-amber-200",
@@ -91,6 +95,9 @@ function OwnerDashboard() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [orderSearch, setOrderSearch] = useState("");
   const [orderFilter, setOrderFilter] = useState("All");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [recentlyUpdatedMap, setRecentlyUpdatedMap] = useState({});
 
   const [shop, setShop] = useState(null);
   const [shopForm, setShopForm] = useState(emptyShopForm);
@@ -110,17 +117,46 @@ function OwnerDashboard() {
   const [updatingServiceId, setUpdatingServiceId] = useState(null);
   const [deletingServiceId, setDeletingServiceId] = useState(null);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
       setError("");
       const response = await apiClient.get("/orders/owner/orders");
-      setOrders(response.data?.orders || []);
+      const nextOrders = response.data?.orders || [];
+
+      setOrders((currentOrders) => {
+        const currentOrderMap = new Map(
+          currentOrders.map((order) => [order?.id, order?.status])
+        );
+        const updates = nextOrders.reduce((accumulator, order) => {
+          const previousStatus = currentOrderMap.get(order?.id);
+
+          if (previousStatus && previousStatus !== order?.status) {
+            accumulator[order.id] = Date.now();
+          }
+
+          return accumulator;
+        }, {});
+
+        if (Object.keys(updates).length > 0) {
+          setRecentlyUpdatedMap((currentMap) => ({
+            ...currentMap,
+            ...updates,
+          }));
+        }
+
+        return nextOrders;
+      });
+      setLastUpdatedAt(new Date().toISOString());
     } catch (fetchError) {
       console.error(fetchError);
       setError("Unable to load laundry owner orders right now.");
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   };
 
@@ -170,6 +206,33 @@ function OwnerDashboard() {
     fetchOrders();
     fetchShop();
     fetchServices();
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setNow(Date.now());
+      setRecentlyUpdatedMap((currentMap) =>
+        Object.fromEntries(
+          Object.entries(currentMap).filter(
+            ([, timestamp]) => Date.now() - timestamp < 30000
+          )
+        )
+      );
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchOrders(false);
+    }, 20000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   const handleStatusUpdate = async (orderId, status) => {
@@ -971,7 +1034,14 @@ function OwnerDashboard() {
               </div>
 
               <div className="text-sm text-slate-400">
-                Showing {filteredOrders.length} matched orders
+                <div>Showing {filteredOrders.length} matched orders</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.2em] text-aqua">
+                  Live order board
+                </div>
+                <div className="mt-1 text-xs">
+                  Last updated{" "}
+                  {lastUpdatedAt ? formatRelativeTime(lastUpdatedAt, now) : "N/A"}
+                </div>
               </div>
             </div>
 
@@ -1059,6 +1129,12 @@ function OwnerDashboard() {
                               >
                                 {formatStatusLabel(order?.status)}
                               </span>
+
+                              {recentlyUpdatedMap[order.id] ? (
+                                <span className="inline-flex items-center rounded-full border border-coral/30 bg-coral/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-coral">
+                                  Recently Updated
+                                </span>
+                              ) : null}
                             </div>
 
                             <div className="mt-4 space-y-3 text-sm text-slate-300">
@@ -1069,7 +1145,7 @@ function OwnerDashboard() {
                                     Pickup Date
                                   </p>
                                   <p className="mt-2 text-white">
-                                    {formatDate(order?.pickupDate)}
+                                    {formatTimestamp(order?.pickupDate)}
                                   </p>
                                 </div>
                                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3">

@@ -2,6 +2,10 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import {
+  formatRelativeTime,
+  formatTimestamp,
+} from "../../utils/dateHelpers.js";
 
 const filterOptions = [
   "All",
@@ -37,13 +41,22 @@ const paymentStyles = {
 
 const formatCurrency = (value) => `Rs. ${Number(value || 0)}`;
 
-const formatDate = (value) =>
-  value
-    ? new Date(value).toLocaleString("en-LK", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : "N/A";
+const getUpdatedIds = (currentOrders, nextOrders) => {
+  const now = Date.now();
+  const currentOrderMap = new Map(
+    currentOrders.map((order) => [order?.id, order?.status])
+  );
+
+  return nextOrders.reduce((updates, order) => {
+    const previousStatus = currentOrderMap.get(order?.id);
+
+    if (previousStatus && previousStatus !== order?.status) {
+      updates[order.id] = now;
+    }
+
+    return updates;
+  }, {});
+};
 
 function CustomerOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -51,13 +64,36 @@ function CustomerOrdersPage() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [recentlyUpdatedMap, setRecentlyUpdatedMap] = useState({});
+
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setNow(Date.now());
+      setRecentlyUpdatedMap((currentMap) =>
+        Object.fromEntries(
+          Object.entries(currentMap).filter(
+            ([, timestamp]) => Date.now() - timestamp < 30000
+          )
+        )
+      );
+    }, 1000);
+
+    return () => {
+      clearInterval(timerId);
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (showLoader = true) => {
       try {
-        setLoading(true);
+        if (showLoader && isMounted) {
+          setLoading(true);
+        }
+
         setError("");
         const response = await apiClient.get("/orders/my-orders");
         const baseOrders = response.data?.orders || [];
@@ -87,7 +123,19 @@ function CustomerOrdersPage() {
         );
 
         if (isMounted) {
-          setOrders(ordersWithPayments);
+          setOrders((currentOrders) => {
+            const updates = getUpdatedIds(currentOrders, ordersWithPayments);
+
+            if (Object.keys(updates).length > 0) {
+              setRecentlyUpdatedMap((currentMap) => ({
+                ...currentMap,
+                ...updates,
+              }));
+            }
+
+            return ordersWithPayments;
+          });
+          setLastUpdatedAt(new Date().toISOString());
         }
       } catch (fetchError) {
         console.error(fetchError);
@@ -96,7 +144,7 @@ function CustomerOrdersPage() {
           setError("Unable to load your orders right now.");
         }
       } finally {
-        if (isMounted) {
+        if (showLoader && isMounted) {
           setLoading(false);
         }
       }
@@ -104,8 +152,13 @@ function CustomerOrdersPage() {
 
     fetchOrders();
 
+    const intervalId = setInterval(() => {
+      fetchOrders(false);
+    }, 30000);
+
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -173,6 +226,14 @@ function CustomerOrdersPage() {
             />
           </label>
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+          <span>{filteredOrders.length} matching orders</span>
+          <span>
+            Last updated{" "}
+            {lastUpdatedAt ? formatRelativeTime(lastUpdatedAt, now) : "N/A"}
+          </span>
+        </div>
       </section>
 
       {loading ? (
@@ -228,6 +289,12 @@ function CustomerOrdersPage() {
                   >
                     Payment: {order?.paymentStatus || "UNKNOWN"}
                   </span>
+
+                  {recentlyUpdatedMap[order.id] ? (
+                    <span className="inline-flex items-center rounded-full border border-coral/30 bg-coral/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-coral">
+                      Recently Updated
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
@@ -237,7 +304,7 @@ function CustomerOrdersPage() {
                     Pickup Date
                   </p>
                   <p className="mt-2 text-base text-white">
-                    {formatDate(order?.pickupDate)}
+                    {formatTimestamp(order?.pickupDate)}
                   </p>
                 </div>
 
@@ -246,7 +313,7 @@ function CustomerOrdersPage() {
                     Created
                   </p>
                   <p className="mt-2 text-base text-white">
-                    {formatDate(order?.createdAt)}
+                    {formatTimestamp(order?.createdAt)}
                   </p>
                 </div>
 

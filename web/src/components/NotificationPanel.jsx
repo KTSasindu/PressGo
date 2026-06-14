@@ -1,27 +1,71 @@
-const formatDate = (value) =>
-  value
-    ? new Date(value).toLocaleString("en-LK", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : "N/A";
+import { useEffect, useState } from "react";
+import {
+  formatRelativeTime,
+  formatTimestamp,
+} from "../utils/dateHelpers.js";
 
 function NotificationPanel({
   notifications,
   loading,
   error,
   onMarkAsRead,
+  onMarkAllAsRead,
+  onRefresh,
   updatingId,
+  markingAllAsRead,
 }) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const unreadCount = notifications.filter(
+    (notification) => !notification?.isRead
+  ).length;
+
   return (
     <div className="absolute right-0 top-full z-30 mt-4 w-[22rem] overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/90 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
       <div className="border-b border-white/10 px-5 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
-          Notifications
-        </p>
-        <h2 className="mt-2 text-lg font-semibold text-white">
-          Activity Updates
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+              Notifications
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-white">
+              Activity Updates
+            </h2>
+          </div>
+
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+            {unreadCount} unread
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:border-aqua/40 hover:bg-aqua/10"
+          >
+            Refresh
+          </button>
+
+          <button
+            type="button"
+            onClick={onMarkAllAsRead}
+            disabled={markingAllAsRead || unreadCount === 0}
+            className="rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:border-aqua/40 hover:bg-aqua/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {markingAllAsRead ? "Saving..." : "Mark All As Read"}
+          </button>
+        </div>
       </div>
 
       <div className="max-h-[28rem] overflow-y-auto px-3 py-3">
@@ -81,9 +125,14 @@ function NotificationPanel({
                   </div>
 
                   <div className="mt-4 flex items-center justify-between gap-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                      {formatDate(notification?.createdAt)}
-                    </p>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                        {formatRelativeTime(notification?.createdAt, now)}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {formatTimestamp(notification?.createdAt)}
+                      </p>
+                    </div>
 
                     {!isRead ? (
                       <button
