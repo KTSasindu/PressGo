@@ -10,6 +10,7 @@ import DriverDashboard from "../pages/driver/DriverDashboard.jsx";
 import OwnerDashboard from "../pages/owner/OwnerDashboard.jsx";
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import PaymentManagementPage from "../pages/admin/PaymentManagementPage.jsx";
+import ShopManagementPage from "../pages/admin/ShopManagementPage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
 function AppRouter() {
@@ -41,6 +42,7 @@ function AppRouter() {
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/payments" element={<PaymentManagementPage />} />
+          <Route path="/admin/shops" element={<ShopManagementPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
