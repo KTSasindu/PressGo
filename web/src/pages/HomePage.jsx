@@ -1,18 +1,48 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../api/apiClient.js";
-import PageHero from "../components/PageHero.jsx";
+import { getUser, isAuthenticated } from "../utils/authStorage.js";
 
-const highlights = [
-  "Track orders, pickups, payments, and reviews in one place.",
-  "Separate dashboards for customers, laundry owners, and admins.",
-  "Built to pair with the PressGo Express + Prisma backend.",
+const howItWorks = [
+  {
+    title: "Choose a laundry",
+    description:
+      "Browse active partners near you and compare availability before you book.",
+  },
+  {
+    title: "Schedule pickup",
+    description:
+      "Set your pickup details in minutes and hand off the rest to PressGo.",
+  },
+  {
+    title: "Track progress",
+    description:
+      "Watch every step from acceptance to washing and delivery in real time.",
+  },
+  {
+    title: "Get delivery",
+    description:
+      "Receive fresh clothes back at your doorstep with clear order updates.",
+  },
 ];
 
+const cities = ["Kandy", "Colombo", "Galle", "Kurunegala", "Matara", "Jaffna"];
+
+const dashboardPaths = {
+  ADMIN: "/admin/dashboard",
+  LAUNDRY_OWNER: "/owner/dashboard",
+  CUSTOMER: "/customer/dashboard",
+  DRIVER: "/driver/dashboard",
+};
+
 function HomePage() {
+  const authenticated = isAuthenticated();
+  const user = getUser();
   const [laundries, setLaundries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -46,116 +76,304 @@ function HomePage() {
     };
   }, []);
 
+  const filteredLaundries = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return laundries;
+    }
+
+    return laundries.filter((laundry) =>
+      [laundry?.name, laundry?.address]
+        .filter(Boolean)
+        .some((field) => field.toLowerCase().includes(normalizedSearch))
+    );
+  }, [laundries, searchTerm]);
+
+  const quickActions = [
+    {
+      label: "Dashboard",
+      to: dashboardPaths[user?.role] || "/customer/dashboard",
+    },
+    ...(user?.role === "CUSTOMER"
+      ? [{ label: "Orders", to: "/customer/orders" }]
+      : []),
+    ...(user?.role === "ADMIN"
+      ? [{ label: "Payments", to: "/admin/payments" }]
+      : []),
+  ];
+
+  if (!authenticated) {
+    return (
+      <div className="space-y-10">
+        <section className="panel overflow-hidden bg-mesh p-8 md:p-12">
+          <div className="grid gap-10 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+                PressGo
+              </p>
+              <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-6xl">
+                Laundry service near you
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300 md:text-lg">
+                Schedule pickup, track washing, and get clean clothes delivered
+                with PressGo.
+              </p>
+
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                <input
+                  value={pickupAddress}
+                  onChange={(event) => setPickupAddress(event.target.value)}
+                  placeholder="Enter pickup address"
+                  className="field flex-1"
+                />
+                <Link to="/login" className="btn-primary whitespace-nowrap">
+                  Find Laundry
+                </Link>
+              </div>
+
+              <p className="mt-4 text-sm text-slate-300">
+                Already have an account?{" "}
+                <Link to="/login" className="text-aqua transition hover:text-white">
+                  Sign in
+                </Link>
+              </p>
+            </div>
+
+            <div className="panel bg-white/8 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-lime">
+                Fast, local, reliable
+              </p>
+              <div className="mt-6 space-y-4">
+                <div className="rounded-3xl border border-white/10 bg-slate-950/30 p-5">
+                  <p className="text-sm text-slate-400">Pickup & washing</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    One seamless flow
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-slate-950/30 p-5">
+                  <p className="text-sm text-slate-400">Real-time updates</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    From order to delivery
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {howItWorks.map((item) => (
+            <article key={item.title} className="panel p-6">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-lg text-aqua">
+                •
+              </div>
+              <h2 className="mt-5 text-xl font-semibold text-white">
+                {item.title}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-slate-300">
+                {item.description}
+              </p>
+            </article>
+          ))}
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <article className="panel p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+              Partner with PressGo
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">
+              Grow your laundry business
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              Reach more customers, manage orders efficiently, and scale your
+              shop operations with PressGo.
+            </p>
+            <Link to="/register" className="btn-secondary mt-6">
+              Register as Laundry Owner
+            </Link>
+          </article>
+
+          <article className="panel p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-lime">
+              Delivery Opportunities
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">
+              Deliver with PressGo
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              Take delivery assignments, track pickup steps, and support a
+              reliable laundry network across the city.
+            </p>
+            <Link to="/register" className="btn-secondary mt-6">
+              Register as Driver
+            </Link>
+          </article>
+        </section>
+
+        <section className="panel p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-coral">
+            Popular Cities
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold text-white">
+            Where PressGo is growing
+          </h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {cities.map((city) => (
+              <div
+                key={city}
+                className="rounded-3xl border border-white/10 bg-slate-950/20 px-5 py-4 text-base font-medium text-white"
+              >
+                {city}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <footer className="panel p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-slate-400">
+              PressGo helps customers, laundries, and drivers stay in sync.
+            </p>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-300">
+              <span>About</span>
+              <span>Help</span>
+              <span>Privacy</span>
+              <span>Terms</span>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
-      <PageHero
-        eyebrow="Laundry Aggregation Platform"
-        title="A fast, modern frontend shell for the PressGo platform."
-        description="This React app is the starting point for customer ordering, laundry-owner operations, and platform administration."
-        actions={[
-          <Link key="login" to="/login" className="btn-primary">
-            Sign in
-          </Link>,
-          <Link key="register" to="/register" className="btn-secondary">
-            Create account
-          </Link>,
-        ]}
-      />
+      <section className="panel overflow-hidden bg-mesh p-8 md:p-12">
+        <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+              Welcome back
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white md:text-5xl">
+              Welcome back, {user?.name || "PressGo user"}
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
+              Choose an active laundry shop and start your next order.
+            </p>
+          </div>
 
-      <section className="grid gap-6 md:grid-cols-3">
-        {highlights.map((item) => (
-          <article key={item} className="panel p-6">
-            <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-aqua">
-              •
-            </div>
-            <p className="text-sm leading-7 text-slate-300">{item}</p>
-          </article>
-        ))}
+          <div className="flex flex-wrap gap-3">
+            {quickActions.map((action) => (
+              <Link
+                key={action.to}
+                to={action.to}
+                className={
+                  action.label === "Dashboard" ? "btn-primary" : "btn-secondary"
+                }
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
 
-      <section className="space-y-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <section className="panel p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-lime">
-              Live from PressGo
+              Active Discovery
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-white">
               Available Laundry Shops
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-              Browse active laundry partners connected to the real backend API.
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              Search by laundry name or address and jump straight into service
+              selection.
             </p>
           </div>
+
+          <label className="block lg:w-80">
+            <span className="sr-only">Search laundries</span>
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by laundry name or address"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-aqua/40"
+            />
+          </label>
         </div>
-
-        {loading ? (
-          <div className="panel p-6 text-sm text-slate-300">
-            Loading available laundry shops...
-          </div>
-        ) : null}
-
-        {!loading && error ? (
-          <div className="panel border border-red-400/30 bg-red-500/10 p-6 text-sm text-red-200">
-            {error}
-          </div>
-        ) : null}
-
-        {!loading && !error && laundries.length === 0 ? (
-          <div className="panel p-6 text-sm text-slate-300">
-            No active laundry shops are available yet.
-          </div>
-        ) : null}
-
-        {!loading && !error && laundries.length > 0 ? (
-          <div className="grid gap-6 lg:grid-cols-2">
-            {laundries.map((laundry) => (
-              <article key={laundry.id} className="panel p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <h3 className="text-2xl font-semibold text-white">
-                      {laundry.name}
-                    </h3>
-                    <p className="mt-3 text-sm leading-7 text-slate-300">
-                      {laundry.address}
-                    </p>
-                  </div>
-
-                  <span className="inline-flex w-fit items-center rounded-full border border-lime/30 bg-lime/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-lime">
-                    {laundry.status}
-                  </span>
-                </div>
-
-                <dl className="mt-6 grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                      Phone
-                    </dt>
-                    <dd className="mt-2 text-base text-white">{laundry.phone}</dd>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                      Opening Hours
-                    </dt>
-                    <dd className="mt-2 text-base text-white">
-                      {laundry.openTime || "N/A"} - {laundry.closeTime || "N/A"}
-                    </dd>
-                  </div>
-                </dl>
-
-                <div className="mt-6">
-                  <Link
-                    to={`/laundries/${laundry.id}`}
-                    className="btn-secondary"
-                  >
-                    View Services
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
       </section>
+
+      {loading ? (
+        <section className="panel p-6 text-sm text-slate-300">
+          Loading available laundry shops...
+        </section>
+      ) : null}
+
+      {!loading && error ? (
+        <section className="panel border border-red-400/30 bg-red-500/10 p-6 text-sm text-red-200">
+          {error}
+        </section>
+      ) : null}
+
+      {!loading && !error && filteredLaundries.length === 0 ? (
+        <section className="panel p-6 text-sm text-slate-300">
+          No active laundry shops matched your current search.
+        </section>
+      ) : null}
+
+      {!loading && !error && filteredLaundries.length > 0 ? (
+        <section className="grid gap-6 lg:grid-cols-2">
+          {filteredLaundries.map((laundry) => (
+            <article key={laundry.id} className="panel p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h3 className="text-2xl font-semibold text-white">
+                    {laundry?.name}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-300">
+                    {laundry?.address}
+                  </p>
+                </div>
+
+                <span className="inline-flex w-fit items-center rounded-full border border-lime/30 bg-lime/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-lime">
+                  {laundry?.status || "ACTIVE"}
+                </span>
+              </div>
+
+              <dl className="mt-6 grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                  <dt className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Phone
+                  </dt>
+                  <dd className="mt-2 text-base text-white">
+                    {laundry?.phone || "N/A"}
+                  </dd>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                  <dt className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Opening Hours
+                  </dt>
+                  <dd className="mt-2 text-base text-white">
+                    {laundry?.openTime || "N/A"} - {laundry?.closeTime || "N/A"}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="mt-6">
+                <Link to={`/laundries/${laundry.id}`} className="btn-secondary">
+                  View Services
+                </Link>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
     </div>
   );
 }
