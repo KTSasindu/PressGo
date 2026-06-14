@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
 
-const activeStatuses = [
+const filterOptions = [
+  "All",
   "PENDING",
   "ACCEPTED_BY_LAUNDRY",
   "PICKED_UP",
   "WASHING",
   "READY_FOR_DELIVERY",
   "DELIVERED",
+  "COMPLETED",
+  "CANCELLED",
+  "REJECTED",
 ];
 
 const statusStyles = {
@@ -41,10 +45,12 @@ const formatDate = (value) =>
       })
     : "N/A";
 
-function CustomerDashboard() {
+function CustomerOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
 
   useEffect(() => {
     let isMounted = true;
@@ -103,71 +109,70 @@ function CustomerDashboard() {
     };
   }, []);
 
-  const totalOrders = orders.length;
-  const activeOrders = orders.filter((order) =>
-    activeStatuses.includes(order?.status)
-  ).length;
-  const completedOrders = orders.filter(
-    (order) => order?.status === "COMPLETED"
-  ).length;
-  const pendingPayments = orders.filter(
-    (order) => order?.paymentStatus !== "PAID"
-  ).length;
+  const filteredOrders = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
 
-  const summaryCards = [
-    {
-      label: "Total Orders",
-      value: totalOrders,
-      tone: "text-aqua",
-    },
-    {
-      label: "Active Orders",
-      value: activeOrders,
-      tone: "text-cyan-200",
-    },
-    {
-      label: "Completed Orders",
-      value: completedOrders,
-      tone: "text-lime",
-    },
-    {
-      label: "Pending Payments",
-      value: pendingPayments,
-      tone: "text-coral",
-    },
-  ];
-  const recentOrders = orders.slice(0, 5);
+    return orders.filter((order) => {
+      const matchesFilter =
+        activeFilter === "All" || order?.status === activeFilter;
+
+      if (!matchesFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const orderId = String(order?.id || "");
+      const shopName = order?.laundryShop?.name?.toLowerCase() || "";
+
+      return (
+        orderId.includes(normalizedSearch) ||
+        shopName.includes(normalizedSearch)
+      );
+    });
+  }, [activeFilter, orders, searchTerm]);
 
   return (
     <div className="space-y-8">
       <PageHero
-        eyebrow="Customer"
-        title="Stay on top of pickups, payments, and recent activity."
-        description="Use this overview dashboard to monitor your latest laundry activity, jump into order history, and quickly start a new booking."
-        actions={
-          <>
-            <Link to="/" className="btn-primary">
-              Find Laundry
-            </Link>
-            <Link to="/customer/orders" className="btn-secondary">
-              View All Orders
-            </Link>
-          </>
-        }
+        eyebrow="Customer Orders"
+        title="Track every laundry order in one dedicated workspace."
+        description="Search your order history, filter by progress stage, review payments, and jump into the full order timeline whenever you need more detail."
       />
 
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {summaryCards.map((card) => (
-          <div key={card.label} className="panel p-6">
-            <p className="text-sm text-slate-400">{card.label}</p>
-            <h2 className={`mt-3 text-3xl font-semibold ${card.tone}`}>
-              {card.value}
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-slate-300">
-              Live dashboard metric based on your current order history.
-            </p>
+      <section className="panel p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-3">
+            {filterOptions.map((filterOption) => (
+              <button
+                key={filterOption}
+                type="button"
+                onClick={() => setActiveFilter(filterOption)}
+                className={[
+                  "rounded-full border px-4 py-2 text-sm transition",
+                  activeFilter === filterOption
+                    ? "border-aqua/40 bg-aqua/10 text-aqua"
+                    : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white",
+                ].join(" ")}
+              >
+                {filterOption}
+              </button>
+            ))}
           </div>
-        ))}
+
+          <label className="block lg:w-80">
+            <span className="sr-only">Search orders</span>
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by order ID or laundry shop"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-aqua/40"
+            />
+          </label>
+        </div>
       </section>
 
       {loading ? (
@@ -182,34 +187,15 @@ function CustomerDashboard() {
         </section>
       ) : null}
 
-      {!loading && !error && orders.length === 0 ? (
+      {!loading && !error && filteredOrders.length === 0 ? (
         <section className="panel p-6 text-sm text-slate-300">
-          You have not placed any orders yet. Start from the home page and add
-          services from an active laundry shop.
+          No orders matched the current filter or search.
         </section>
       ) : null}
 
-      {!loading && !error && orders.length > 0 ? (
+      {!loading && !error && filteredOrders.length > 0 ? (
         <section className="space-y-6">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
-                Recent Orders
-              </p>
-              <h2 className="mt-2 text-3xl font-semibold text-white">
-                Latest Customer Activity
-              </h2>
-              <p className="mt-2 text-sm leading-7 text-slate-300">
-                Your five most recent orders are listed here for quick access.
-              </p>
-            </div>
-
-            <Link to="/customer/orders" className="btn-secondary">
-              See Full History
-            </Link>
-          </div>
-
-          {recentOrders.map((order) => (
+          {filteredOrders.map((order) => (
             <article key={order.id} className="panel p-6 md:p-8">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -281,24 +267,68 @@ function CustomerDashboard() {
                     {order?.payment?.method || "Not recorded"}
                   </p>
                 </div>
+              </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Payment Date
-                  </p>
-                  <p className="mt-2 text-base text-white">
-                    {formatDate(order?.payment?.createdAt)}
-                  </p>
-                </div>
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-white">
+                  Ordered Services
+                </h3>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Items
-                  </p>
-                  <p className="mt-2 text-base text-white">
-                    {order?.items?.length || 0}
-                  </p>
-                </div>
+                {order?.items?.length ? (
+                  <div className="mt-4 grid gap-4">
+                    {order.items.map((item) => {
+                      const quantity = Number(item?.quantity || 0);
+                      const price = Number(item?.price || 0);
+                      const subtotal = quantity * price;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-2xl border border-white/10 bg-slate-950/20 p-4"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <h4 className="text-base font-semibold text-white">
+                                {item?.service?.name || "Service unavailable"}
+                              </h4>
+                              <p className="mt-1 text-sm text-slate-400">
+                                {item?.service?.description ||
+                                  "No service description available."}
+                              </p>
+                            </div>
+
+                            <span className="inline-flex w-fit items-center rounded-full border border-aqua/30 bg-aqua/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-aqua">
+                              {item?.service?.unitType || "UNIT"}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                            <div>
+                              <p className="text-slate-400">Quantity</p>
+                              <p className="mt-1 text-white">{quantity}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Price</p>
+                              <p className="mt-1 text-white">
+                                {formatCurrency(price)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Subtotal</p>
+                              <p className="mt-1 text-white">
+                                {formatCurrency(subtotal)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-white/15 bg-slate-950/20 p-4 text-sm text-slate-300">
+                    No order items available for this order.
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 border-t border-white/10 pt-6">
@@ -314,4 +344,4 @@ function CustomerDashboard() {
   );
 }
 
-export default CustomerDashboard;
+export default CustomerOrdersPage;

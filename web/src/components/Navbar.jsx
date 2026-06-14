@@ -24,15 +24,14 @@ function Navbar() {
     }[user?.role] || "/login";
   const ordersPath =
     {
-      ADMIN: "/admin/dashboard",
       LAUNDRY_OWNER: "/owner/dashboard",
-      CUSTOMER: "/customer/dashboard",
+      CUSTOMER: "/customer/orders",
       DRIVER: "/driver/dashboard",
-    }[user?.role] || "/login";
+    }[user?.role] || null;
   const navItems = authenticated
     ? [
         { label: "Dashboard", to: dashboardPath },
-        { label: "Orders", to: ordersPath },
+        ...(ordersPath ? [{ label: "Orders", to: ordersPath }] : []),
         ...(user?.role === "ADMIN"
           ? [
               { label: "Payments", to: "/admin/payments" },
@@ -50,6 +49,11 @@ function Navbar() {
     clearAuthData();
     setIsMenuOpen(false);
     navigate("/login");
+  };
+
+  const handleDrawerClose = () => {
+    setIsMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -112,14 +116,14 @@ function Navbar() {
 
           <aside className="absolute left-0 top-0 flex h-full w-full max-w-sm flex-col border-r border-white/10 bg-slate-950/92 p-6 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
             <div className="flex items-center justify-between">
-              <div>
+              <Link to="/" onClick={handleDrawerClose} className="block">
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
                   PressGo
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-white">
-                  Navigation
+                  PressGo
                 </h2>
-              </div>
+              </Link>
 
               <button
                 type="button"
@@ -153,7 +157,7 @@ function Navbar() {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={handleDrawerClose}
                   className={({ isActive }) =>
                     [
                       "rounded-2xl border px-4 py-4 text-sm transition",

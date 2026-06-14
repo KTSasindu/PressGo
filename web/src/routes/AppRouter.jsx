@@ -4,6 +4,7 @@ import HomePage from "../pages/HomePage.jsx";
 import LoginPage from "../pages/auth/LoginPage.jsx";
 import RegisterPage from "../pages/auth/RegisterPage.jsx";
 import CustomerDashboard from "../pages/customer/CustomerDashboard.jsx";
+import CustomerOrdersPage from "../pages/customer/CustomerOrdersPage.jsx";
 import LaundryDetailsPage from "../pages/customer/LaundryDetailsPage.jsx";
 import OrderDetailsPage from "../pages/orders/OrderDetailsPage.jsx";
 import DriverDashboard from "../pages/driver/DriverDashboard.jsx";
@@ -33,6 +34,7 @@ function AppRouter() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["CUSTOMER"]} />}>
           <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+          <Route path="/customer/orders" element={<CustomerOrdersPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["DRIVER"]} />}>
           <Route path="/driver/dashboard" element={<DriverDashboard />} />
