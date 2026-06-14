@@ -34,6 +34,7 @@ function Navbar() {
         ...(ordersPath ? [{ label: "Orders", to: ordersPath }] : []),
         ...(user?.role === "ADMIN"
           ? [
+              { label: "Deliveries", to: "/admin/deliveries" },
               { label: "Payments", to: "/admin/payments" },
               { label: "Shops", to: "/admin/shops" },
               { label: "Users", to: "/admin/users" },

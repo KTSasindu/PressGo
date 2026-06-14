@@ -10,6 +10,7 @@ import OrderDetailsPage from "../pages/orders/OrderDetailsPage.jsx";
 import DriverDashboard from "../pages/driver/DriverDashboard.jsx";
 import OwnerDashboard from "../pages/owner/OwnerDashboard.jsx";
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
+import DeliveryManagementPage from "../pages/admin/DeliveryManagementPage.jsx";
 import PaymentManagementPage from "../pages/admin/PaymentManagementPage.jsx";
 import ShopManagementPage from "../pages/admin/ShopManagementPage.jsx";
 import UserManagementPage from "../pages/admin/UserManagementPage.jsx";
@@ -44,6 +45,7 @@ function AppRouter() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/deliveries" element={<DeliveryManagementPage />} />
           <Route path="/admin/payments" element={<PaymentManagementPage />} />
           <Route path="/admin/shops" element={<ShopManagementPage />} />
           <Route path="/admin/users" element={<UserManagementPage />} />
