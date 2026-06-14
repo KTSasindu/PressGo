@@ -1,14 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
-
-const activeStatuses = [
-  "ACCEPTED_BY_LAUNDRY",
-  "PICKED_UP",
-  "WASHING",
-  "READY_FOR_DELIVERY",
-  "DELIVERED",
-];
 
 const statusStyles = {
   PENDING: "border-amber-400/30 bg-amber-500/10 text-amber-200",
@@ -22,24 +15,35 @@ const statusStyles = {
   REJECTED: "border-rose-400/30 bg-rose-500/10 text-rose-200",
 };
 
-const paymentStyles = {
-  PENDING: "border-amber-400/30 bg-amber-500/10 text-amber-200",
-  PAID: "border-lime-400/30 bg-lime-500/10 text-lime-200",
-  FAILED: "border-red-400/30 bg-red-500/10 text-red-200",
-  REFUNDED: "border-slate-400/30 bg-slate-500/10 text-slate-200",
-};
-
 const statusActionMap = {
   PENDING: [
-    { label: "Accept Order", status: "ACCEPTED_BY_LAUNDRY" },
-    { label: "Reject Order", status: "REJECTED" },
+    { label: "Accept", status: "ACCEPTED_BY_LAUNDRY" },
   ],
-  ACCEPTED_BY_LAUNDRY: [{ label: "Mark Picked Up", status: "PICKED_UP" }],
-  PICKED_UP: [{ label: "Start Washing", status: "WASHING" }],
+  ACCEPTED_BY_LAUNDRY: [{ label: "Start Washing", status: "WASHING" }],
   WASHING: [{ label: "Ready For Delivery", status: "READY_FOR_DELIVERY" }],
   READY_FOR_DELIVERY: [{ label: "Mark Delivered", status: "DELIVERED" }],
   DELIVERED: [{ label: "Complete Order", status: "COMPLETED" }],
 };
+
+const kanbanColumns = [
+  { key: "PENDING", title: "Pending", statuses: ["PENDING"] },
+  {
+    key: "ACCEPTED_BY_LAUNDRY",
+    title: "Accepted By Laundry",
+    statuses: ["ACCEPTED_BY_LAUNDRY"],
+  },
+  { key: "WASHING", title: "Washing", statuses: ["WASHING"] },
+  {
+    key: "READY_FOR_DELIVERY",
+    title: "Ready For Delivery",
+    statuses: ["READY_FOR_DELIVERY"],
+  },
+  {
+    key: "COMPLETED",
+    title: "Delivered / Completed",
+    statuses: ["DELIVERED", "COMPLETED"],
+  },
+];
 
 const emptyShopForm = {
   name: "",
@@ -68,12 +72,25 @@ const formatDate = (value) =>
     : "N/A";
 
 const getAvailableActions = (status) => statusActionMap[status] || [];
+const formatStatusLabel = (value) => value?.replaceAll("_", " ") || "UNKNOWN";
+
+const getOrderActivityDate = (order) => {
+  const rawValue = order?.pickupDate || order?.createdAt;
+  return rawValue ? new Date(rawValue) : null;
+};
+
+const isSameDay = (date, reference) =>
+  date.getFullYear() === reference.getFullYear() &&
+  date.getMonth() === reference.getMonth() &&
+  date.getDate() === reference.getDate();
 
 function OwnerDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderFilter, setOrderFilter] = useState("All");
 
   const [shop, setShop] = useState(null);
   const [shopForm, setShopForm] = useState(emptyShopForm);
@@ -331,11 +348,7 @@ function OwnerDashboard() {
     }
   };
 
-  const totalOrders = orders.length;
   const pendingOrders = orders.filter((order) => order?.status === "PENDING").length;
-  const activeProcessingOrders = orders.filter((order) =>
-    activeStatuses.includes(order?.status)
-  ).length;
   const completedOrders = orders.filter(
     (order) => order?.status === "COMPLETED"
   ).length;
@@ -350,13 +363,77 @@ function OwnerDashboard() {
       order?.status === "COMPLETED" && order?.paymentStatus === "PAID"
   ).length;
 
+  const filteredOrders = useMemo(() => {
+    const normalizedSearch = orderSearch.trim().toLowerCase();
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(now.getDate() - now.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    return orders.filter((order) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        String(order?.id || "").includes(normalizedSearch) ||
+        order?.customer?.name?.toLowerCase().includes(normalizedSearch);
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (orderFilter === "All") {
+        return true;
+      }
+
+      const activityDate = getOrderActivityDate(order);
+
+      if (!activityDate || Number.isNaN(activityDate.getTime())) {
+        return false;
+      }
+
+      if (orderFilter === "Today") {
+        return isSameDay(activityDate, now);
+      }
+
+      if (orderFilter === "This Week") {
+        return activityDate >= weekStart && activityDate < weekEnd;
+      }
+
+      return true;
+    });
+  }, [orderFilter, orderSearch, orders]);
+
+  const kanbanOrders = useMemo(
+    () =>
+      kanbanColumns.map((column) => ({
+        ...column,
+        orders: filteredOrders.filter((order) =>
+          column.statuses.includes(order?.status)
+        ),
+      })),
+    [filteredOrders]
+  );
+
+  const archivedOrders = useMemo(
+    () =>
+      filteredOrders.filter((order) =>
+        ["CANCELLED", "REJECTED"].includes(order?.status)
+      ),
+    [filteredOrders]
+  );
+
   const summaryCards = [
-    { label: "Total Orders", value: totalOrders, tone: "text-aqua" },
     { label: "Pending Orders", value: pendingOrders, tone: "text-amber-200" },
     {
-      label: "Active Processing",
-      value: activeProcessingOrders,
-      tone: "text-cyan-200",
+      label: "Orders In Washing",
+      value: orders.filter((order) => order?.status === "WASHING").length,
+      tone: "text-indigo-200",
+    },
+    {
+      label: "Ready For Delivery",
+      value: orders.filter((order) => order?.status === "READY_FOR_DELIVERY").length,
+      tone: "text-violet-200",
     },
     { label: "Completed Orders", value: completedOrders, tone: "text-lime" },
   ];
@@ -878,164 +955,282 @@ function OwnerDashboard() {
 
       {!loading && !error && orders.length > 0 ? (
         <section className="space-y-6">
-          {orders.map((order) => (
-            <article key={order.id} className="panel p-6 md:p-8">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
-                    Order #{order.id}
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold text-white">
-                    {order?.customer?.name || "Customer unavailable"}
-                  </h2>
-                  <p className="mt-2 text-sm text-slate-300">
-                    {order?.customer?.phone || "Phone unavailable"}
-                  </p>
-                  <p className="mt-3 text-sm leading-7 text-slate-300">
-                    {order?.pickupAddress || "Pickup address unavailable"}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <span
-                    className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                      statusStyles[order?.status] ||
-                      "border-white/15 bg-white/5 text-white"
-                    }`}
-                  >
-                    {order?.status || "UNKNOWN"}
-                  </span>
-
-                  <span
-                    className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                      paymentStyles[order?.paymentStatus] ||
-                      "border-white/15 bg-white/5 text-white"
-                    }`}
-                  >
-                    Payment: {order?.paymentStatus || "UNKNOWN"}
-                  </span>
-                </div>
+          <div className="panel p-6 md:p-8">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
+                  Order Workspace
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  Manage the full laundry workflow visually
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                  Search live orders, focus on this week&apos;s workload, and
+                  move customer orders through each service stage.
+                </p>
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Pickup Date
-                  </p>
-                  <p className="mt-2 text-base text-white">
-                    {formatDate(order?.pickupDate)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Created
-                  </p>
-                  <p className="mt-2 text-base text-white">
-                    {formatDate(order?.createdAt)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Total Amount
-                  </p>
-                  <p className="mt-2 text-base text-white">
-                    {formatCurrency(order?.totalAmount)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Items
-                  </p>
-                  <p className="mt-2 text-base text-white">
-                    {order?.items?.length || 0}
-                  </p>
-                </div>
+              <div className="text-sm text-slate-400">
+                Showing {filteredOrders.length} matched orders
               </div>
+            </div>
 
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-white">
-                  Ordered Services
-                </h3>
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
+              <label className="block">
+                <span className="sr-only">Search owner orders</span>
+                <input
+                  type="search"
+                  className="field"
+                  value={orderSearch}
+                  onChange={(event) => setOrderSearch(event.target.value)}
+                  placeholder="Search by order ID or customer name"
+                />
+              </label>
 
-                {order?.items?.length ? (
-                  <div className="mt-4 grid gap-4">
-                    {order.items.map((item) => {
-                      const quantity = Number(item?.quantity || 0);
-                      const price = Number(item?.price || 0);
-                      const subtotal = quantity * price;
+              <label className="block">
+                <span className="sr-only">Filter owner orders by date</span>
+                <select
+                  className="field"
+                  value={orderFilter}
+                  onChange={(event) => setOrderFilter(event.target.value)}
+                >
+                  <option value="All">All</option>
+                  <option value="Today">Today</option>
+                  <option value="This Week">This Week</option>
+                </select>
+              </label>
+            </div>
+          </div>
 
-                      return (
-                        <div
-                          key={item.id}
-                          className="rounded-2xl border border-white/10 bg-slate-950/20 p-4"
-                        >
-                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div>
-                              <h4 className="text-base font-semibold text-white">
-                                {item?.service?.name || "Service unavailable"}
-                              </h4>
-                              <p className="mt-1 text-sm text-slate-400">
-                                {item?.service?.description ||
-                                  "No service description available."}
-                              </p>
-                            </div>
+          {filteredOrders.length === 0 ? (
+            <div className="panel p-6 text-sm text-slate-300">
+              No owner orders matched your current search or date filter.
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-6 xl:grid-cols-5">
+                {kanbanOrders.map((column) => (
+                  <section key={column.key} className="panel p-4 md:p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-aqua">
+                          {column.title}
+                        </p>
+                        <h3 className="mt-2 text-lg font-semibold text-white">
+                          {column.orders.length} order
+                          {column.orders.length === 1 ? "" : "s"}
+                        </h3>
+                      </div>
 
-                            <span className="inline-flex w-fit items-center rounded-full border border-aqua/30 bg-aqua/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-aqua">
-                              {item?.service?.unitType || "UNIT"}
-                            </span>
-                          </div>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                        {column.key === "COMPLETED" ? "Final" : "Live"}
+                      </span>
+                    </div>
 
-                          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                            <div>
-                              <p className="text-slate-400">Quantity</p>
-                              <p className="mt-1 text-white">{quantity}</p>
-                            </div>
-                            <div>
-                              <p className="text-slate-400">Price</p>
-                              <p className="mt-1 text-white">
-                                {formatCurrency(price)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-slate-400">Subtotal</p>
-                              <p className="mt-1 text-white">
-                                {formatCurrency(subtotal)}
-                              </p>
-                            </div>
-                          </div>
+                    <div className="mt-5 space-y-4">
+                      {column.orders.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/20 p-4 text-sm text-slate-300">
+                          No orders in this column right now.
                         </div>
-                      );
-                    })}
+                      ) : (
+                        column.orders.map((order) => (
+                          <article
+                            key={order.id}
+                            className="rounded-3xl border border-white/10 bg-slate-950/25 p-4"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-aqua">
+                                  Order #{order.id}
+                                </p>
+                                <h4 className="mt-2 text-lg font-semibold text-white">
+                                  {order?.customer?.name || "Customer unavailable"}
+                                </h4>
+                                <p className="mt-1 text-sm text-slate-400">
+                                  {order?.customer?.phone || "Phone unavailable"}
+                                </p>
+                              </div>
+
+                              <span
+                                className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                                  statusStyles[order?.status] ||
+                                  "border-white/15 bg-white/5 text-white"
+                                }`}
+                              >
+                                {formatStatusLabel(order?.status)}
+                              </span>
+                            </div>
+
+                            <div className="mt-4 space-y-3 text-sm text-slate-300">
+                              <p>{order?.pickupAddress || "Pickup address unavailable"}</p>
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                    Pickup Date
+                                  </p>
+                                  <p className="mt-2 text-white">
+                                    {formatDate(order?.pickupDate)}
+                                  </p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                    Total Amount
+                                  </p>
+                                  <p className="mt-2 text-white">
+                                    {formatCurrency(order?.totalAmount)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                    Services
+                                  </p>
+                                  <p className="mt-2 text-white">
+                                    {order?.items?.length || 0}
+                                  </p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                    Payment
+                                  </p>
+                                  <p className="mt-2 text-white">
+                                    {order?.paymentStatus || "UNKNOWN"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-5 flex flex-wrap gap-3">
+                              <Link
+                                to={`/orders/${order.id}`}
+                                className="btn-secondary"
+                              >
+                                View Details
+                              </Link>
+
+                              {getAvailableActions(order?.status).map((action) => (
+                                <button
+                                  key={`${order.id}-${action.status}`}
+                                  type="button"
+                                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                                  disabled={updatingOrderId === order.id}
+                                  onClick={() =>
+                                    handleStatusUpdate(order.id, action.status)
+                                  }
+                                >
+                                  {updatingOrderId === order.id
+                                    ? "Updating..."
+                                    : action.label}
+                                </button>
+                              ))}
+                            </div>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                ))}
+              </div>
+
+              <section className="panel p-6 md:p-8">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-coral">
+                      Exceptions
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-white">
+                      Cancelled & Rejected Orders
+                    </h2>
+                  </div>
+
+                  <span className="text-sm text-slate-400">
+                    {archivedOrders.length} archived order
+                    {archivedOrders.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                {archivedOrders.length === 0 ? (
+                  <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-950/20 p-4 text-sm text-slate-300">
+                    No cancelled or rejected orders matched the current filters.
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-white/15 bg-slate-950/20 p-4 text-sm text-slate-300">
-                    No order items available for this order.
+                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                    {archivedOrders.map((order) => (
+                      <article
+                        key={order.id}
+                        className="rounded-3xl border border-red-400/20 bg-red-500/5 p-5"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-coral">
+                              Order #{order.id}
+                            </p>
+                            <h3 className="mt-2 text-lg font-semibold text-white">
+                              {order?.customer?.name || "Customer unavailable"}
+                            </h3>
+                            <p className="mt-1 text-sm text-slate-400">
+                              {order?.customer?.phone || "Phone unavailable"}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                              statusStyles[order?.status] ||
+                              "border-white/15 bg-white/5 text-white"
+                            }`}
+                          >
+                            {formatStatusLabel(order?.status)}
+                          </span>
+                        </div>
+
+                        <p className="mt-4 text-sm leading-7 text-slate-300">
+                          {order?.pickupAddress || "Pickup address unavailable"}
+                        </p>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              Pickup Date
+                            </p>
+                            <p className="mt-2 text-white">
+                              {formatDate(order?.pickupDate)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              Amount
+                            </p>
+                            <p className="mt-2 text-white">
+                              {formatCurrency(order?.totalAmount)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              Services
+                            </p>
+                            <p className="mt-2 text-white">
+                              {order?.items?.length || 0}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5">
+                          <Link
+                            to={`/orders/${order.id}`}
+                            className="btn-secondary"
+                          >
+                            View Details
+                          </Link>
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 )}
-              </div>
-
-              {getAvailableActions(order?.status).length > 0 ? (
-                <div className="mt-6 flex flex-wrap gap-3 border-t border-white/10 pt-6">
-                  {getAvailableActions(order.status).map((action) => (
-                    <button
-                      key={`${order.id}-${action.status}`}
-                      type="button"
-                      className="btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={updatingOrderId === order.id}
-                      onClick={() => handleStatusUpdate(order.id, action.status)}
-                    >
-                      {updatingOrderId === order.id
-                        ? "Updating..."
-                        : action.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </article>
-          ))}
+              </section>
+            </>
+          )}
         </section>
       ) : null}
     </div>
