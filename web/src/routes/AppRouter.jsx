@@ -11,6 +11,7 @@ import OwnerDashboard from "../pages/owner/OwnerDashboard.jsx";
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import PaymentManagementPage from "../pages/admin/PaymentManagementPage.jsx";
 import ShopManagementPage from "../pages/admin/ShopManagementPage.jsx";
+import UserManagementPage from "../pages/admin/UserManagementPage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
 function AppRouter() {
@@ -43,6 +44,7 @@ function AppRouter() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/payments" element={<PaymentManagementPage />} />
           <Route path="/admin/shops" element={<ShopManagementPage />} />
+          <Route path="/admin/users" element={<UserManagementPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

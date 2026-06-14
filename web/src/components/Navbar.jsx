@@ -34,7 +34,11 @@ function Navbar() {
         { label: "Dashboard", to: dashboardPath },
         { label: "Orders", to: ordersPath },
         ...(user?.role === "ADMIN"
-          ? [{ label: "Payments", to: "/admin/payments" }]
+          ? [
+              { label: "Payments", to: "/admin/payments" },
+              { label: "Shops", to: "/admin/shops" },
+              { label: "Users", to: "/admin/users" },
+            ]
           : []),
       ]
     : [
