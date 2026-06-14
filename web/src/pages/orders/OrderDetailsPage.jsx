@@ -5,7 +5,7 @@ import apiClient from "../../api/apiClient.js";
 import { getUser } from "../../utils/authStorage.js";
 
 const timelineSteps = [
-  "ORDER_CREATED",
+  "PENDING",
   "ACCEPTED_BY_LAUNDRY",
   "PICKED_UP",
   "WASHING",
@@ -53,6 +53,9 @@ const formatDate = (value, fallback = "N/A") =>
       })
     : fallback;
 
+const formatStatusLabel = (value) =>
+  value ? value.replaceAll("_", " ") : "UNKNOWN";
+
 const getTimelineIndex = (status) => {
   if (status === "CANCELLED" || status === "REJECTED") {
     return 0;
@@ -60,6 +63,49 @@ const getTimelineIndex = (status) => {
 
   const sequenceIndex = statusSequence.indexOf(status);
   return sequenceIndex === -1 ? 0 : sequenceIndex;
+};
+
+const getStageState = (index, currentIndex, status) => {
+  if (status === "CANCELLED" || status === "REJECTED") {
+    return index === 0 ? "current" : "future";
+  }
+
+  if (index < currentIndex) {
+    return "completed";
+  }
+
+  if (index === currentIndex) {
+    return "current";
+  }
+
+  return "future";
+};
+
+const getStagePresentation = (state) => {
+  if (state === "completed") {
+    return {
+      card: "border-lime-400/30 bg-lime-500/10 text-lime-50",
+      marker: "border-lime-400/40 bg-lime-500 text-slate-950",
+      connector: "bg-lime-400/60",
+      icon: "✓",
+    };
+  }
+
+  if (state === "current") {
+    return {
+      card: "border-aqua/40 bg-aqua/10 text-white shadow-lg shadow-aqua/10",
+      marker: "border-aqua/50 bg-aqua/20 text-aqua",
+      connector: "bg-white/10",
+      icon: "●",
+    };
+  }
+
+  return {
+    card: "border-white/10 bg-white/5 text-slate-400",
+    marker: "border-white/10 bg-slate-950/50 text-slate-500",
+    connector: "bg-white/10",
+    icon: "○",
+  };
 };
 
 function OrderDetailsPage() {
@@ -130,6 +176,13 @@ function OrderDetailsPage() {
     user?.role === "CUSTOMER" &&
     order?.status === "COMPLETED" &&
     !order?.review;
+  const sortedStatusHistory = Array.isArray(order?.statusHistory)
+    ? [...order.statusHistory].sort(
+        (firstEntry, secondEntry) =>
+          new Date(firstEntry?.createdAt || 0).getTime() -
+          new Date(secondEntry?.createdAt || 0).getTime()
+      )
+    : [];
 
   const handleReviewSubmit = async (event) => {
     event.preventDefault();
@@ -240,14 +293,16 @@ function OrderDetailsPage() {
             </div>
 
             {(order?.status === "CANCELLED" || order?.status === "REJECTED") ? (
-              <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-4 text-sm text-red-200">
-                This order is currently marked as {order.status.toLowerCase()}.
+              <div className="mt-6 rounded-3xl border border-red-400/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">
+                {order.status === "CANCELLED"
+                  ? "This order has been cancelled. Please contact support or the laundry partner if you need more context."
+                  : "This order was rejected by the laundry partner. Review the order details or place a new request if needed."}
               </div>
             ) : null}
           </section>
 
           <section className="panel p-6 md:p-8">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
                   Timeline
@@ -258,43 +313,135 @@ function OrderDetailsPage() {
               </div>
 
               <span className="text-sm text-slate-400">
-                Current step: {order?.status || "ORDER_CREATED"}
+                Current step: {formatStatusLabel(order?.status || "PENDING")}
               </span>
             </div>
 
-            <div className="mt-8 grid gap-4 lg:grid-cols-7">
-              {timelineSteps.map((step, index) => {
-                const isActive = index <= currentTimelineIndex;
-                const isCurrent = index === currentTimelineIndex;
+            <div className="mt-8 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+              <div className="space-y-0">
+                {timelineSteps.map((step, index) => {
+                  const stageState = getStageState(
+                    index,
+                    currentTimelineIndex,
+                    order?.status
+                  );
+                  const stagePresentation = getStagePresentation(stageState);
+                  const isCurrent = stageState === "current";
+                  const isLast = index === timelineSteps.length - 1;
 
-                return (
-                  <div key={step} className="relative">
                     <div
-                      className={[
-                        "rounded-3xl border px-4 py-5 text-center transition",
-                        isActive
-                          ? "border-aqua/30 bg-aqua/10 text-white"
-                          : "border-white/10 bg-white/5 text-slate-400",
-                        isCurrent ? "shadow-lg shadow-aqua/10" : "",
-                      ].join(" ")}
+                      key={step}
+                      className="grid grid-cols-[auto_1fr] gap-4 pb-5 last:pb-0"
                     >
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={[
+                            "relative flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold transition",
+                            stagePresentation.marker,
+                          ].join(" ")}
+                        >
+                          {isCurrent ? (
+                            <span className="absolute inset-0 rounded-full border border-aqua/40 animate-ping" />
+                          ) : null}
+                          <span className="relative z-10">
+                            {stagePresentation.icon}
+                          </span>
+                        </div>
+
+                        {!isLast ? (
+                          <div
+                            className={`mt-2 h-full min-h-10 w-px ${stagePresentation.connector}`}
+                          />
+                        ) : null}
+                      </div>
+
                       <div
                         className={[
-                          "mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold",
-                          isActive
-                            ? "border-aqua/40 bg-aqua/20 text-aqua"
-                            : "border-white/10 bg-white/5 text-slate-400",
+                          "rounded-3xl border px-5 py-4 transition",
+                          stagePresentation.card,
                         ].join(" ")}
                       >
-                        {index + 1}
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em]">
+                              Stage {index + 1}
+                            </p>
+                            <h3 className="mt-2 text-base font-semibold">
+                              {formatStatusLabel(step)}
+                            </h3>
+                          </div>
+
+                          <span className="text-xs uppercase tracking-[0.2em] text-slate-300/90">
+                            {stageState === "completed"
+                              ? "Completed"
+                              : isCurrent
+                                ? "In progress"
+                                : "Upcoming"}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-sm leading-6 text-slate-300">
+                          {step === "PENDING" &&
+                            "Your order was created and is waiting for the laundry partner to review it."}
+                          {step === "ACCEPTED_BY_LAUNDRY" &&
+                            "The laundry owner has accepted your request and is preparing the next step."}
+                          {step === "PICKED_UP" &&
+                            "Your items have been picked up and are moving through the service workflow."}
+                          {step === "WASHING" &&
+                            "The laundry team is actively washing and processing your items."}
+                          {step === "READY_FOR_DELIVERY" &&
+                            "Your order is finished and queued for return delivery."}
+                          {step === "DELIVERED" &&
+                            "The delivery handoff is complete and the order is awaiting final closure."}
+                          {step === "COMPLETED" &&
+                            "The order lifecycle is complete and you can leave a review if you are the customer."}
+                        </p>
                       </div>
-                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em]">
-                        {step.replaceAll("_", " ")}
-                      </p>
                     </div>
+                })}
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-slate-950/20 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-coral">
+                  Status History
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-white">
+                  Event Log
+                </h3>
+
+                {sortedStatusHistory.length > 0 ? (
+                  <div className="mt-5 space-y-4">
+                    {sortedStatusHistory.map((entry, index) => (
+                      <article
+                        key={`${entry?.status || "status"}-${entry?.createdAt || index}`}
+                        className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                      >
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <span
+                            className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                              statusStyles[entry?.status] ||
+                              "border-white/15 bg-white/5 text-white"
+                            }`}
+                          >
+                            {formatStatusLabel(entry?.status)}
+                          </span>
+                          <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                            {formatDate(entry?.createdAt)}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-sm leading-6 text-slate-300">
+                          {entry?.note || "No additional note was provided for this update."}
+                        </p>
+                      </article>
+                    ))}
                   </div>
-                );
-              })}
+                ) : (
+                  <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-slate-950/20 p-4 text-sm text-slate-300">
+                    No status history entries are available for this order yet.
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
