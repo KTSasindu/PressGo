@@ -208,8 +208,35 @@ function LaundryDetailsPage() {
 
   if (loading) {
     return (
-      <section className="panel p-8 text-sm text-slate-300">
-        Loading laundry details...
+      <section className="space-y-6" aria-label="Loading laundry details">
+        <div className="panel p-6 sm:p-8">
+          <div className="skeleton h-6 w-32" />
+          <div className="mt-4 skeleton h-10 w-2/3" />
+          <div className="mt-4 space-y-2">
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-5/6" />
+          </div>
+        </div>
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-6">
+            {[1, 2].map((card) => (
+              <div key={card} className="panel p-6">
+                <div className="skeleton h-8 w-1/2" />
+                <div className="mt-4 space-y-2">
+                  <div className="skeleton h-4 w-full" />
+                  <div className="skeleton h-4 w-4/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="panel p-6">
+            <div className="skeleton h-8 w-1/2" />
+            <div className="mt-6 space-y-4">
+              <div className="skeleton h-24 w-full" />
+              <div className="skeleton h-24 w-full" />
+            </div>
+          </div>
+        </div>
       </section>
     );
   }
@@ -224,21 +251,26 @@ function LaundryDetailsPage() {
 
   if (!laundry) {
     return (
-      <section className="panel p-8 text-sm text-slate-300">
-        Laundry shop not found.
+      <section className="empty-state">
+        <div className="text-3xl">🧺</div>
+        <p className="mt-3 font-medium text-white">Laundry shop not found</p>
+        <p className="mt-2">Try returning to the discovery page and choosing another active partner.</p>
+        <Link to="/" className="btn-secondary mt-5 w-full sm:w-auto">
+          Back to Laundries
+        </Link>
       </section>
     );
   }
 
   return (
     <div className="space-y-8">
-      <section className="panel overflow-hidden bg-mesh p-8 md:p-10">
+      <section className="panel overflow-hidden bg-mesh p-6 sm:p-8 md:p-10">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
               Laundry Partner
             </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white">
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               {laundry?.name}
             </h1>
             <p className="mt-4 text-base leading-7 text-slate-300">
@@ -387,15 +419,16 @@ function LaundryDetailsPage() {
                       </div>
                     </dl>
 
-                    <div className="mt-6">
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => addToOrder(service)}
-                      >
-                        Add to Order
-                      </button>
-                    </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                className="btn-secondary w-full sm:w-auto"
+                onClick={() => addToOrder(service)}
+                aria-label={`Add ${service?.name || "service"} to order`}
+              >
+                Add to Order
+              </button>
+            </div>
                   </article>
                 ))}
               </div>
@@ -450,27 +483,30 @@ function LaundryDetailsPage() {
                             <div className="flex items-center rounded-full border border-white/10 bg-white/5 p-1">
                               <button
                                 type="button"
-                                className="h-9 w-9 rounded-full text-lg text-white transition hover:bg-white/10"
-                                onClick={() => decrementQuantity(item.serviceId)}
-                              >
-                                -
-                              </button>
+                              className="h-11 w-11 rounded-full text-lg text-white transition hover:bg-white/10"
+                              onClick={() => decrementQuantity(item.serviceId)}
+                              aria-label={`Decrease quantity for ${item.name}`}
+                            >
+                              -
+                            </button>
                               <span className="min-w-10 text-center text-sm font-semibold text-white">
                                 {item.quantity}
                               </span>
                               <button
                                 type="button"
-                                className="h-9 w-9 rounded-full text-lg text-white transition hover:bg-white/10"
-                                onClick={() => incrementQuantity(item.serviceId)}
-                              >
-                                +
-                              </button>
+                              className="h-11 w-11 rounded-full text-lg text-white transition hover:bg-white/10"
+                              onClick={() => incrementQuantity(item.serviceId)}
+                              aria-label={`Increase quantity for ${item.name}`}
+                            >
+                              +
+                            </button>
                             </div>
 
                             <button
                               type="button"
-                              className="rounded-full border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+                              className="w-full rounded-full border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 sm:w-auto"
                               onClick={() => removeItem(item.serviceId)}
+                              aria-label={`Remove ${item.name} from order`}
                             >
                               Remove
                             </button>

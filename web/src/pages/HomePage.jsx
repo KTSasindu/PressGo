@@ -194,17 +194,17 @@ function HomePage() {
 
   if (!authenticated) {
     return (
-      <div className="space-y-10">
-        <section className="panel overflow-hidden bg-mesh p-8 md:p-12">
+      <div className="space-y-8 sm:space-y-10">
+        <section className="panel overflow-hidden bg-mesh p-6 sm:p-8 md:p-12">
           <div className="grid gap-10 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
                 PressGo
               </p>
-              <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-6xl">
+              <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
                 Laundry service near you
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300 md:text-lg">
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base md:text-lg md:leading-8">
                 Schedule pickup, track washing, and get clean clothes delivered
                 with PressGo.
               </p>
@@ -215,8 +215,9 @@ function HomePage() {
                   onChange={(event) => setPickupAddress(event.target.value)}
                   placeholder="Enter pickup address"
                   className="field flex-1"
+                  aria-label="Pickup address"
                 />
-                <Link to="/login" className="btn-primary whitespace-nowrap">
+                <Link to="/login" className="btn-primary w-full sm:w-auto whitespace-nowrap">
                   Find Laundry
                 </Link>
               </div>
@@ -268,7 +269,7 @@ function HomePage() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <article className="panel p-8">
+          <article className="panel p-6 sm:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
               Partner with PressGo
             </p>
@@ -279,12 +280,12 @@ function HomePage() {
               Reach more customers, manage orders efficiently, and scale your
               shop operations with PressGo.
             </p>
-            <Link to="/register" className="btn-secondary mt-6">
+            <Link to="/register" className="btn-secondary mt-6 w-full sm:w-auto">
               Register as Laundry Owner
             </Link>
           </article>
 
-          <article className="panel p-8">
+          <article className="panel p-6 sm:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-lime">
               Delivery Opportunities
             </p>
@@ -295,13 +296,13 @@ function HomePage() {
               Take delivery assignments, track pickup steps, and support a
               reliable laundry network across the city.
             </p>
-            <Link to="/register" className="btn-secondary mt-6">
+            <Link to="/register" className="btn-secondary mt-6 w-full sm:w-auto">
               Register as Driver
             </Link>
           </article>
         </section>
 
-        <section className="panel p-8">
+        <section className="panel p-6 sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-coral">
             Popular Cities
           </p>
@@ -339,27 +340,29 @@ function HomePage() {
 
   return (
     <div className="space-y-8">
-      <section className="panel overflow-hidden bg-mesh p-8 md:p-12">
+      <section className="panel overflow-hidden bg-mesh p-6 sm:p-8 md:p-12">
         <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
               Welcome back
             </p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white md:text-5xl">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">
               Welcome back, {user?.name || "PressGo user"}
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base md:text-lg">
               Choose an active laundry shop and start your next order.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
             {quickActions.map((action) => (
               <Link
                 key={action.to}
                 to={action.to}
                 className={
-                  action.label === "Dashboard" ? "btn-primary" : "btn-secondary"
+                  action.label === "Dashboard"
+                    ? "btn-primary w-full sm:w-auto"
+                    : "btn-secondary w-full sm:w-auto"
                 }
               >
                 {action.label}
@@ -430,8 +433,21 @@ function HomePage() {
       </section>
 
       {loading ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          Loading available laundry shops...
+        <section className="grid gap-6 lg:grid-cols-2" aria-label="Loading laundries">
+          {[1, 2, 3, 4].map((card) => (
+            <div key={card} className="panel p-6">
+              <div className="skeleton h-7 w-2/3" />
+              <div className="mt-4 space-y-2">
+                <div className="skeleton h-4 w-full" />
+                <div className="skeleton h-4 w-5/6" />
+              </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="skeleton h-24 w-full" />
+                <div className="skeleton h-24 w-full" />
+              </div>
+              <div className="mt-6 skeleton h-11 w-full sm:w-40" />
+            </div>
+          ))}
         </section>
       ) : null}
 
@@ -442,15 +458,20 @@ function HomePage() {
       ) : null}
 
       {!loading && !error && filteredLaundries.length === 0 ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          No active laundry shops matched your current filters.
+        <section className="empty-state">
+          <div className="text-3xl">🧺</div>
+          <p className="mt-3 font-medium text-white">No laundries found</p>
+          <p className="mt-2">
+            Try adjusting your search, turning off the open-now filter, or
+            checking back a little later.
+          </p>
         </section>
       ) : null}
 
       {!loading && !error && filteredLaundries.length > 0 ? (
         <section className="grid gap-6 lg:grid-cols-2">
           {filteredLaundries.map((laundry) => (
-            <article key={laundry.id} className="panel p-6">
+            <article key={laundry.id} className="panel p-5 sm:p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <h3 className="text-2xl font-semibold text-white">
@@ -499,7 +520,7 @@ function HomePage() {
               </div>
 
               <div className="mt-6">
-                <Link to={`/laundries/${laundry.id}`} className="btn-secondary">
+                <Link to={`/laundries/${laundry.id}`} className="btn-secondary w-full sm:w-auto">
                   View Services
                 </Link>
               </div>

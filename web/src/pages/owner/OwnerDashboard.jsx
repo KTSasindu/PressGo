@@ -999,8 +999,17 @@ function OwnerDashboard() {
       </section>
 
       {loading ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          Loading incoming orders...
+        <section className="grid gap-6 xl:grid-cols-3" aria-label="Loading owner orders">
+          {[1, 2, 3].map((card) => (
+            <div key={card} className="panel p-6">
+              <div className="skeleton h-6 w-1/3" />
+              <div className="mt-4 skeleton h-8 w-2/3" />
+              <div className="mt-4 space-y-2">
+                <div className="skeleton h-4 w-full" />
+                <div className="skeleton h-4 w-5/6" />
+              </div>
+            </div>
+          ))}
         </section>
       ) : null}
 
@@ -1011,8 +1020,13 @@ function OwnerDashboard() {
       ) : null}
 
       {!loading && !error && orders.length === 0 ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          No customer orders are assigned to your laundry shop yet.
+        <section className="empty-state">
+          <div className="text-3xl">🧼</div>
+          <p className="mt-3 font-medium text-white">No customer orders yet</p>
+          <p className="mt-2">
+            New orders for your laundry shop will appear here once customers
+            start booking services.
+          </p>
         </section>
       ) : null}
 

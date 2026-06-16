@@ -253,8 +253,26 @@ function OrderDetailsPage() {
       />
 
       {loading ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          Loading order details...
+        <section className="space-y-6" aria-label="Loading order details">
+          <div className="panel p-6 md:p-8">
+            <div className="skeleton h-6 w-32" />
+            <div className="mt-4 skeleton h-9 w-2/3" />
+            <div className="mt-4 space-y-2">
+              <div className="skeleton h-4 w-full" />
+              <div className="skeleton h-4 w-5/6" />
+            </div>
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            {[1, 2, 3, 4].map((card) => (
+              <div key={card} className="panel p-6">
+                <div className="skeleton h-7 w-1/2" />
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="skeleton h-20 w-full" />
+                  <div className="skeleton h-20 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -271,8 +289,10 @@ function OrderDetailsPage() {
       ) : null}
 
       {!loading && !error && !notFound && !order ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          No order details are available right now.
+        <section className="empty-state">
+          <div className="text-3xl">📄</div>
+          <p className="mt-3 font-medium text-white">No order details available</p>
+          <p className="mt-2">Try returning to your dashboard and reopening the order.</p>
         </section>
       ) : null}
 
@@ -832,7 +852,7 @@ function OrderDetailsPage() {
 
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="btn-primary w-full sm:w-auto"
                   disabled={reviewSubmitting}
                 >
                   {reviewSubmitting ? "Submitting..." : "Submit Review"}

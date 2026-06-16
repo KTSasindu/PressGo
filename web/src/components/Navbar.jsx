@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   clearAuthData,
   getUser,
@@ -9,6 +9,7 @@ import NotificationBell from "./NotificationBell.jsx";
 
 function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const authenticated = isAuthenticated();
   const user = getUser();
@@ -56,6 +57,32 @@ function Navbar() {
     setIsMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMenuOpen) {
+      document.body.classList.remove("drawer-open");
+      return undefined;
+    }
+
+    document.body.classList.add("drawer-open");
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.classList.remove("drawer-open");
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMenuOpen]);
 
   return (
     <>
@@ -111,11 +138,11 @@ function Navbar() {
           <button
             type="button"
             aria-label="Close navigation menu"
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
-            onClick={() => setIsMenuOpen(false)}
+            className="drawer-overlay absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            onClick={handleDrawerClose}
           />
 
-          <aside className="absolute left-0 top-0 flex h-full w-full max-w-sm flex-col border-r border-white/10 bg-slate-950/92 p-6 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
+          <aside className="drawer-panel absolute left-0 top-0 flex h-full w-full max-w-sm flex-col border-r border-white/10 bg-slate-950/92 p-5 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl sm:p-6">
             <div className="flex items-center justify-between">
               <Link to="/" onClick={handleDrawerClose} className="block">
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
@@ -128,7 +155,7 @@ function Navbar() {
 
               <button
                 type="button"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={handleDrawerClose}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl text-white transition hover:border-aqua/40 hover:bg-white/10"
                 aria-label="Close navigation menu"
               >

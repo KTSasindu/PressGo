@@ -146,10 +146,10 @@ function CustomerDashboard() {
         description="Use this overview dashboard to monitor your latest laundry activity, jump into order history, and quickly start a new booking."
         actions={
           <>
-            <Link to="/" className="btn-primary">
+            <Link to="/" className="btn-primary w-full sm:w-auto">
               Find Laundry
             </Link>
-            <Link to="/customer/orders" className="btn-secondary">
+            <Link to="/customer/orders" className="btn-secondary w-full sm:w-auto">
               View All Orders
             </Link>
           </>
@@ -171,8 +171,17 @@ function CustomerDashboard() {
       </section>
 
       {loading ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          Loading your orders...
+        <section className="grid gap-6 lg:grid-cols-2" aria-label="Loading dashboard orders">
+          {[1, 2].map((card) => (
+            <div key={card} className="panel p-6">
+              <div className="skeleton h-6 w-1/3" />
+              <div className="mt-4 skeleton h-8 w-2/3" />
+              <div className="mt-4 space-y-2">
+                <div className="skeleton h-4 w-full" />
+                <div className="skeleton h-4 w-5/6" />
+              </div>
+            </div>
+          ))}
         </section>
       ) : null}
 
@@ -183,15 +192,22 @@ function CustomerDashboard() {
       ) : null}
 
       {!loading && !error && orders.length === 0 ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          You have not placed any orders yet. Start from the home page and add
-          services from an active laundry shop.
+        <section className="empty-state">
+          <div className="text-3xl">📦</div>
+          <p className="mt-3 font-medium text-white">No orders yet</p>
+          <p className="mt-2">
+            Start from the home page, pick a laundry, and place your first
+            PressGo order.
+          </p>
+          <Link to="/" className="btn-primary mt-5 w-full sm:w-auto">
+            Find Laundry
+          </Link>
         </section>
       ) : null}
 
       {!loading && !error && orders.length > 0 ? (
         <section className="space-y-6">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-aqua">
                 Recent Orders
@@ -204,7 +220,7 @@ function CustomerDashboard() {
               </p>
             </div>
 
-            <Link to="/customer/orders" className="btn-secondary">
+            <Link to="/customer/orders" className="btn-secondary w-full sm:w-auto">
               See Full History
             </Link>
           </div>
@@ -302,7 +318,7 @@ function CustomerDashboard() {
               </div>
 
               <div className="mt-6 border-t border-white/10 pt-6">
-                <Link to={`/orders/${order.id}`} className="btn-secondary">
+                <Link to={`/orders/${order.id}`} className="btn-secondary w-full sm:w-auto">
                   View Full Order Details
                 </Link>
               </div>

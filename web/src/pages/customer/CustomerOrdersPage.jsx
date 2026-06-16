@@ -237,8 +237,22 @@ function CustomerOrdersPage() {
       </section>
 
       {loading ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          Loading your orders...
+        <section className="grid gap-6" aria-label="Loading customer orders">
+          {[1, 2].map((card) => (
+            <div key={card} className="panel p-6 md:p-8">
+              <div className="flex flex-col gap-4">
+                <div className="skeleton h-5 w-32" />
+                <div className="skeleton h-8 w-2/3" />
+                <div className="skeleton h-4 w-full" />
+                <div className="skeleton h-4 w-5/6" />
+              </div>
+              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={item} className="skeleton h-24 w-full" />
+                ))}
+              </div>
+            </div>
+          ))}
         </section>
       ) : null}
 
@@ -249,8 +263,16 @@ function CustomerOrdersPage() {
       ) : null}
 
       {!loading && !error && filteredOrders.length === 0 ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          No orders matched the current filter or search.
+        <section className="empty-state">
+          <div className="text-3xl">🧾</div>
+          <p className="mt-3 font-medium text-white">No orders yet</p>
+          <p className="mt-2">
+            Try a different filter or start a new order from the laundry
+            discovery page.
+          </p>
+          <Link to="/" className="btn-primary mt-5 w-full sm:w-auto">
+            Find Laundry
+          </Link>
         </section>
       ) : null}
 
@@ -399,7 +421,7 @@ function CustomerOrdersPage() {
               </div>
 
               <div className="mt-6 border-t border-white/10 pt-6">
-                <Link to={`/orders/${order.id}`} className="btn-secondary">
+                <Link to={`/orders/${order.id}`} className="btn-secondary w-full sm:w-auto">
                   View Full Order Details
                 </Link>
               </div>

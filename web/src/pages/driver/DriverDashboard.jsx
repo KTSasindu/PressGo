@@ -264,8 +264,17 @@ function DriverDashboard() {
       </section>
 
       {loading ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          Loading assigned deliveries...
+        <section className="grid gap-6" aria-label="Loading deliveries">
+          {[1, 2].map((card) => (
+            <div key={card} className="panel p-6 md:p-8">
+              <div className="skeleton h-6 w-32" />
+              <div className="mt-4 skeleton h-8 w-1/2" />
+              <div className="mt-4 space-y-2">
+                <div className="skeleton h-4 w-full" />
+                <div className="skeleton h-4 w-4/5" />
+              </div>
+            </div>
+          ))}
         </section>
       ) : null}
 
@@ -276,8 +285,13 @@ function DriverDashboard() {
       ) : null}
 
       {!loading && !error && filteredDeliveries.length === 0 ? (
-        <section className="panel p-6 text-sm text-slate-300">
-          No deliveries matched your current search or filter.
+        <section className="empty-state">
+          <div className="text-3xl">🚚</div>
+          <p className="mt-3 font-medium text-white">No deliveries right now</p>
+          <p className="mt-2">
+            New pickup and delivery assignments will appear here as soon as
+            they are dispatched.
+          </p>
         </section>
       ) : null}
 
@@ -421,7 +435,7 @@ function DriverDashboard() {
                   {!isPickedUp ? (
                     <button
                       type="button"
-                      className="btn-primary"
+                      className="btn-primary w-full sm:w-auto"
                       disabled={updatingDeliveryId === delivery.id}
                       onClick={() => handleMarkPickedUp(delivery.id)}
                     >
@@ -434,7 +448,7 @@ function DriverDashboard() {
                   {isPickedUp && !isDelivered ? (
                     <button
                       type="button"
-                      className="btn-primary"
+                      className="btn-primary w-full sm:w-auto"
                       disabled={updatingDeliveryId === delivery.id}
                       onClick={() => handleMarkDelivered(delivery.id)}
                     >
