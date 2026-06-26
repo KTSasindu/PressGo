@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
 import { getUser } from "../../utils/authStorage.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 import {
   formatRelativeTime,
   formatTimestamp,
@@ -162,10 +163,7 @@ function OrderDetailsPage() {
           return;
         }
 
-        setError(
-          fetchError.response?.data?.message ||
-            "Unable to load this order right now."
-        );
+        setError(getApiErrorMessage(fetchError, "Unable to load this order right now."));
       } finally {
         if (showLoader && isMounted) {
           setLoading(false);
@@ -230,10 +228,7 @@ function OrderDetailsPage() {
       setComment("");
     } catch (submitError) {
       console.error(submitError);
-      setReviewError(
-        submitError.response?.data?.message ||
-          "Unable to submit your review right now."
-      );
+      setReviewError(getApiErrorMessage(submitError, "Unable to submit your review right now."));
     } finally {
       setReviewSubmitting(false);
     }

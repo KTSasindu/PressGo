@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 const paymentStyles = {
   PENDING: "border-amber-400/30 bg-amber-500/10 text-amber-200",
@@ -44,7 +45,7 @@ function PaymentManagementPage() {
         console.error(fetchError);
 
         if (isMounted) {
-          setError("Unable to load payment records right now.");
+          setError(getApiErrorMessage(fetchError, "Unable to load payment records right now."));
         }
       } finally {
         if (isMounted) {

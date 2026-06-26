@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 const deliveryFilters = ["All", "Pending Pickup", "In Transit", "Delivered"];
 
@@ -74,10 +75,7 @@ function DeliveryManagementPage() {
       setOrders(nextOrders);
     } catch (fetchError) {
       console.error(fetchError);
-      setError(
-        fetchError.response?.data?.message ||
-          "Unable to load delivery dispatch records right now."
-      );
+      setError(getApiErrorMessage(fetchError, "Unable to load delivery dispatch records right now."));
     } finally {
       setLoading(false);
     }
@@ -184,10 +182,7 @@ function DeliveryManagementPage() {
       await fetchDispatchData();
     } catch (submitError) {
       console.error(submitError);
-      setError(
-        submitError.response?.data?.message ||
-          "Unable to assign a driver right now."
-      );
+      setError(getApiErrorMessage(submitError, "Unable to assign a driver right now."));
     } finally {
       setSubmitting(false);
     }

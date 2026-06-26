@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../../api/authApi.js";
 import { saveAuthData } from "../../utils/authStorage.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 const roleRedirects = {
   ADMIN: "/admin/dashboard",
@@ -39,9 +40,7 @@ function LoginPage() {
       });
     } catch (error) {
       console.log("Login failed");
-      setErrorMessage(
-        error.response?.data?.message || "Unable to login. Please try again."
-      );
+      setErrorMessage(getApiErrorMessage(error, "Unable to login. Please try again."));
     } finally {
       setIsSubmitting(false);
     }

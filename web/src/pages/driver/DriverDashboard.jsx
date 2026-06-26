@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 import {
   formatRelativeTime,
   formatTimestamp,
@@ -89,7 +90,7 @@ function DriverDashboard() {
       setLastUpdatedAt(new Date().toISOString());
     } catch (fetchError) {
       console.error(fetchError);
-      setError("Unable to load your assigned deliveries right now.");
+      setError(getApiErrorMessage(fetchError, "Unable to load your assigned deliveries right now."));
     } finally {
       if (showLoader) {
         setLoading(false);
@@ -131,10 +132,7 @@ function DriverDashboard() {
       await fetchDeliveries(false);
     } catch (updateError) {
       console.error(updateError);
-      setError(
-        updateError.response?.data?.message ||
-          "Unable to mark this delivery as picked up."
-      );
+      setError(getApiErrorMessage(updateError, "Unable to mark this delivery as picked up."));
     } finally {
       setUpdatingDeliveryId(null);
     }
@@ -148,10 +146,7 @@ function DriverDashboard() {
       await fetchDeliveries(false);
     } catch (updateError) {
       console.error(updateError);
-      setError(
-        updateError.response?.data?.message ||
-          "Unable to mark this delivery as delivered."
-      );
+      setError(getApiErrorMessage(updateError, "Unable to mark this delivery as delivered."));
     } finally {
       setUpdatingDeliveryId(null);
     }

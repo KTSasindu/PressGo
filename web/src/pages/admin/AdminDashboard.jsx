@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 const statusStyles = {
   PENDING: "border-amber-400/30 bg-amber-500/10 text-amber-200",
@@ -63,7 +64,7 @@ function AdminDashboard() {
         console.error(fetchError);
 
         if (isMounted) {
-          setError("Unable to load admin dashboard data right now.");
+          setError(getApiErrorMessage(fetchError, "Unable to load admin dashboard data right now."));
         }
       } finally {
         if (isMounted) {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 const filterOptions = ["All", "CUSTOMER", "LAUNDRY_OWNER", "DRIVER", "ADMIN"];
 
@@ -30,7 +31,7 @@ function UserManagementPage() {
       setUsers(response.data?.users || []);
     } catch (fetchError) {
       console.error(fetchError);
-      setError("Unable to load platform users right now.");
+      setError(getApiErrorMessage(fetchError, "Unable to load platform users right now."));
     } finally {
       setLoading(false);
     }
@@ -76,10 +77,7 @@ function UserManagementPage() {
       setSuccessMessage("User role updated successfully.");
     } catch (updateError) {
       console.error(updateError);
-      setError(
-        updateError.response?.data?.message ||
-          "Unable to update this user's role right now."
-      );
+      setError(getApiErrorMessage(updateError, "Unable to update this user's role right now."));
     } finally {
       setUpdatingUserId(null);
     }
@@ -103,10 +101,7 @@ function UserManagementPage() {
       setSuccessMessage(response.data?.message || "User deleted successfully.");
     } catch (deleteError) {
       console.error(deleteError);
-      setError(
-        deleteError.response?.data?.message ||
-          "Unable to delete this user right now."
-      );
+      setError(getApiErrorMessage(deleteError, "Unable to delete this user right now."));
     } finally {
       setDeletingUserId(null);
     }

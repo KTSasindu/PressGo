@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 import {
   formatRelativeTime,
   formatTimestamp,
@@ -152,7 +153,7 @@ function OwnerDashboard() {
       setLastUpdatedAt(new Date().toISOString());
     } catch (fetchError) {
       console.error(fetchError);
-      setError("Unable to load laundry owner orders right now.");
+      setError(getApiErrorMessage(fetchError, "Unable to load laundry owner orders right now."));
     } finally {
       if (showLoader) {
         setLoading(false);
@@ -176,10 +177,7 @@ function OwnerDashboard() {
       });
     } catch (fetchError) {
       console.error(fetchError);
-      setShopError(
-        fetchError.response?.data?.message ||
-          "Unable to load your shop profile right now."
-      );
+      setShopError(getApiErrorMessage(fetchError, "Unable to load your shop profile right now."));
     } finally {
       setShopLoading(false);
     }
@@ -193,10 +191,7 @@ function OwnerDashboard() {
       setServices(response.data?.services || []);
     } catch (fetchError) {
       console.error(fetchError);
-      setServicesError(
-        fetchError.response?.data?.message ||
-          "Unable to load your services right now."
-      );
+      setServicesError(getApiErrorMessage(fetchError, "Unable to load your services right now."));
     } finally {
       setServicesLoading(false);
     }
@@ -243,10 +238,7 @@ function OwnerDashboard() {
       await fetchOrders();
     } catch (updateError) {
       console.error(updateError);
-      setError(
-        updateError.response?.data?.message ||
-          "Unable to update order status right now."
-      );
+      setError(getApiErrorMessage(updateError, "Unable to update order status right now."));
     } finally {
       setUpdatingOrderId(null);
     }
@@ -288,10 +280,7 @@ function OwnerDashboard() {
       setShopSuccess("Shop profile updated successfully.");
     } catch (updateError) {
       console.error(updateError);
-      setShopError(
-        updateError.response?.data?.message ||
-          "Unable to update your shop profile right now."
-      );
+      setShopError(getApiErrorMessage(updateError, "Unable to update your shop profile right now."));
     } finally {
       setSavingShop(false);
     }
@@ -327,10 +316,7 @@ function OwnerDashboard() {
       setServiceSuccess("Service created successfully.");
     } catch (createError) {
       console.error(createError);
-      setServicesError(
-        createError.response?.data?.message ||
-          "Unable to create the service right now."
-      );
+      setServicesError(getApiErrorMessage(createError, "Unable to create the service right now."));
     } finally {
       setServiceSubmitting(false);
     }
@@ -377,10 +363,7 @@ function OwnerDashboard() {
       setServiceSuccess("Service updated successfully.");
     } catch (updateError) {
       console.error(updateError);
-      setServicesError(
-        updateError.response?.data?.message ||
-          "Unable to update the service right now."
-      );
+      setServicesError(getApiErrorMessage(updateError, "Unable to update the service right now."));
     } finally {
       setUpdatingServiceId(null);
     }
@@ -402,10 +385,7 @@ function OwnerDashboard() {
       setServiceSuccess("Service deleted successfully.");
     } catch (deleteError) {
       console.error(deleteError);
-      setServicesError(
-        deleteError.response?.data?.message ||
-          "Unable to delete the service right now."
-      );
+      setServicesError(getApiErrorMessage(deleteError, "Unable to delete the service right now."));
     } finally {
       setDeletingServiceId(null);
     }

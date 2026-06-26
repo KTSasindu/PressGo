@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 const getMinutesFromTime = (value) => {
   if (!value || !value.includes(":")) {
@@ -160,10 +161,7 @@ function LaundryDetailsPage() {
       setPickupDate("");
       setSuccessMessage("Order placed successfully.");
     } catch (submitOrderError) {
-      setSubmitError(
-        submitOrderError.response?.data?.message ||
-          "Unable to place the order right now."
-      );
+      setSubmitError(getApiErrorMessage(submitOrderError, "Unable to place the order right now."));
     } finally {
       setSubmitting(false);
     }
@@ -190,7 +188,7 @@ function LaundryDetailsPage() {
         console.error(fetchError);
 
         if (isMounted) {
-          setError("Unable to load laundry details right now.");
+          setError(getApiErrorMessage(fetchError, "Unable to load laundry details right now."));
         }
       } finally {
         if (isMounted) {

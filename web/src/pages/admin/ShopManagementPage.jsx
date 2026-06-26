@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 const filterOptions = ["All", "ACTIVE", "INACTIVE"];
 
@@ -41,7 +42,7 @@ function ShopManagementPage() {
       setShops(response.data?.shops || []);
     } catch (fetchError) {
       console.error(fetchError);
-      setError("Unable to load laundry shops right now.");
+      setError(getApiErrorMessage(fetchError, "Unable to load laundry shops right now."));
     } finally {
       setLoading(false);
     }
@@ -117,10 +118,7 @@ function ShopManagementPage() {
       setSuccessMessage("Shop updated successfully.");
     } catch (updateError) {
       console.error(updateError);
-      setError(
-        updateError.response?.data?.message ||
-          "Unable to update this shop right now."
-      );
+      setError(getApiErrorMessage(updateError, "Unable to update this shop right now."));
     } finally {
       setUpdatingShopId(null);
     }
@@ -156,10 +154,7 @@ function ShopManagementPage() {
       );
     } catch (deleteError) {
       console.error(deleteError);
-      setError(
-        deleteError.response?.data?.message ||
-          "Unable to delete this shop right now."
-      );
+      setError(getApiErrorMessage(deleteError, "Unable to delete this shop right now."));
     } finally {
       setDeletingShopId(null);
     }

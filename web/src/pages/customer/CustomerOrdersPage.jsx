@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import PageHero from "../../components/PageHero.jsx";
 import apiClient from "../../api/apiClient.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 import {
   formatRelativeTime,
   formatTimestamp,
@@ -141,7 +142,7 @@ function CustomerOrdersPage() {
         console.error(fetchError);
 
         if (isMounted) {
-          setError("Unable to load your orders right now.");
+          setError(getApiErrorMessage(fetchError, "Unable to load your orders right now."));
         }
       } finally {
         if (showLoader && isMounted) {

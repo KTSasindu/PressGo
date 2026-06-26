@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../../api/authApi.js";
+import { getApiErrorMessage } from "../../utils/apiError.js";
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -29,8 +30,7 @@ function RegisterPage() {
       navigate("/login", { replace: true });
     } catch (error) {
       setErrorMessage(
-        error.response?.data?.message ||
-          "Unable to register right now. Please try again."
+        getApiErrorMessage(error, "Unable to register right now. Please try again.")
       );
     } finally {
       setIsSubmitting(false);

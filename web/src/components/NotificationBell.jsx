@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import apiClient from "../api/apiClient.js";
 import { isAuthenticated } from "../utils/authStorage.js";
+import { getApiErrorMessage } from "../utils/apiError.js";
 import NotificationPanel from "./NotificationPanel.jsx";
 
 function NotificationBell() {
@@ -46,7 +47,7 @@ function NotificationBell() {
         console.error(fetchError);
 
         if (isMounted) {
-          setError("Unable to load notifications right now.");
+          setError(getApiErrorMessage(fetchError, "Unable to load notifications right now."));
         }
       } finally {
         if (isMounted && showLoader) {
@@ -100,7 +101,7 @@ function NotificationBell() {
       );
     } catch (updateError) {
       console.error(updateError);
-      setError(updateError.response?.data?.message || "Unable to update notification.");
+      setError(getApiErrorMessage(updateError, "Unable to update notification."));
     } finally {
       setUpdatingId(null);
     }
@@ -119,10 +120,7 @@ function NotificationBell() {
       setNotifications(sortedNotifications);
     } catch (refreshError) {
       console.error(refreshError);
-      setError(
-        refreshError.response?.data?.message ||
-          "Unable to refresh notifications right now."
-      );
+      setError(getApiErrorMessage(refreshError, "Unable to refresh notifications right now."));
     } finally {
       setLoading(false);
     }
@@ -155,10 +153,7 @@ function NotificationBell() {
       );
     } catch (updateError) {
       console.error(updateError);
-      setError(
-        updateError.response?.data?.message ||
-          "Unable to mark all notifications as read."
-      );
+      setError(getApiErrorMessage(updateError, "Unable to mark all notifications as read."));
     } finally {
       setMarkingAllAsRead(false);
     }
