@@ -222,6 +222,18 @@ docker compose build
 docker compose up
 ```
 
+## Deployment
+
+Deployment preparation is documented in:
+
+- [DEPLOYMENT.md](/Users/ktsasindu/Developer/PressGo/DEPLOYMENT.md)
+
+Planned hosting stack:
+
+- Frontend: Vercel
+- Backend: Render
+- Database: Neon PostgreSQL
+
 ## Development Status
 
 - Core MVP completed
