@@ -66,6 +66,6 @@ describe("Payment routes", () => {
     const response = await request(app).get("/api/payments/admin/all");
 
     expect(response.status).toBe(401);
-    expect(response.body.message).toBe("No token provided");
+    expect(response.body.message).toBe("Authentication token is required");
   });
 });

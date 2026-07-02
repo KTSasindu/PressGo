@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import config from "../config/env.js";
 import prisma from "../config/prisma.js";
 
 const sanitizeUser = (user) => {
@@ -41,7 +42,7 @@ export const registerUser = async (req, res) => {
     console.error(error);
 
     res.status(500).json({
-      message: "Server Error",
+      message: "Internal server error",
     });
   }
 };
@@ -76,7 +77,7 @@ export const loginUser = async (req, res) => {
         id: user.id,
         role: user.role,
       },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || config.jwtSecret,
       {
         expiresIn: "7d",
       }
@@ -91,7 +92,7 @@ export const loginUser = async (req, res) => {
     console.error(error);
 
     res.status(500).json({
-      message: "Server Error",
+      message: "Internal server error",
     });
   }
 };

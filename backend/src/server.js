@@ -21,22 +21,79 @@ import swaggerSpec from "./config/swagger.js";
 
 const app = express();
 
+app.disable("x-powered-by");
+
+const isTestEnv = config.nodeEnv === "test";
+
+const buildRateLimitMessage = () => ({
+  message: "Too many requests. Please try again later.",
+});
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: {
-    message: "Too many requests, please try again later.",
-  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => isTestEnv,
+  message: buildRateLimitMessage(),
 });
 
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => isTestEnv,
+  message: buildRateLimitMessage(),
+});
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (config.nodeEnv === "production") {
+      return origin === config.frontendUrl
+        ? callback(null, true)
+        : callback(null, false);
+    }
+
+    const isLocalhostOrigin =
+      /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) ||
+      /^https:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
+    return origin === config.frontendUrl || isLocalhostOrigin
+      ? callback(null, true)
+      : callback(null, false);
+  },
+};
+
 // Global middlewares
+app.use(cors(corsOptions));
 app.use(
-  cors({
-    origin: config.frontendUrl,
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        connectSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
   })
 );
-app.use(helmet());
-app.use(morgan("dev"));
+app.use(
+  morgan(
+    config.nodeEnv === "production"
+      ? "tiny"
+      : ":method :url :status :response-time ms"
+  )
+);
 app.use(express.json());
 
 // Health check route
@@ -48,7 +105,7 @@ app.get("/", (req, res) => {
 
 // API routes
 app.use("/api", apiLimiter);
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/laundries", laundryRoutes);
 app.use("/api/services", serviceRoutes);
@@ -66,7 +123,6 @@ app.use(errorHandler);
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const isDirectRun = process.argv[1] === currentFilePath;
-const isTestEnv = config.nodeEnv === "test";
 
 if (isDirectRun && !isTestEnv) {
   app.listen(config.port, "0.0.0.0", () => {

@@ -69,6 +69,6 @@ describe("Notification routes", () => {
     const response = await request(app).get("/api/notifications/my");
 
     expect(response.status).toBe(401);
-    expect(response.body.message).toBe("No token provided");
+    expect(response.body.message).toBe("Authentication token is required");
   });
 });

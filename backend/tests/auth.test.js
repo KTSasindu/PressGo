@@ -35,7 +35,7 @@ describe("Authentication routes", () => {
       name: "New Customer",
       email: "new@pressgo.com",
       phone: "0771234567",
-      password: "123456",
+      password: "Password123",
       role: "CUSTOMER",
     });
 
@@ -67,7 +67,7 @@ describe("Authentication routes", () => {
     const response = await request(app).post("/api/auth/register").send({
       name: "Existing User",
       email: "existing@pressgo.com",
-      password: "123456",
+      password: "Password123",
     });
 
     expect(response.status).toBe(400);
